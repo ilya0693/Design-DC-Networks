@@ -55,18 +55,18 @@
 |Client2|eth0|10.123.100.11/24|100 |10.123.100.1/24|Client VLAN|
 |Client3|eth0|10.123.100.12/24|100 |10.123.100.1/24|Client VLAN|
 |Client4|eth0|10.123.100.13/24|100 |10.123.100.1/24|Client VLAN|
-|Spine-1|eth1|10.123.1.1/30   |N/A |N/A            |p2p connect|
-|Leaf-1 |eth1|10.123.1.2/30   |N/A |N/A            |p2p connect|
-|Spine-2|eth1|10.123.1.5/30   |N/A |N/A            |p2p connect|
-|Leaf-1 |eth2|10.123.1.6/30   |N/A |N/A            |p2p connect|
-|Spine-1|eth2|10.123.1.9/30   |N/A |N/A            |p2p connect|
-|Leaf-2 |eth1|10.123.1.10/30  |N/A |N/A            |p2p connect|
-|Spine-2|eth2|10.123.1.13/30  |N/A |N/A            |p2p connect|
-|Leaf-2 |eth2|10.123.1.14/30  |N/A |N/A            |p2p connect|
-|Spine-1|eth3|10.123.1.17/30  |N/A |N/A            |p2p connect|
-|Leaf-3 |eth1|10.123.1.18/30  |N/A |N/A            |p2p connect|
-|Spine-2|eth3|10.123.1.21/30  |N/A |N/A            |p2p connect|
-|Leaf-3 |eth2|10.123.1.22/30  |N/A |N/A            |p2p connect|
+|Spine-1|eth1|10.123.1.1/30   |N/A |N/A            |p2p connect with Leaf-1: eth1|
+|Leaf-1 |eth1|10.123.1.2/30   |N/A |N/A            |p2p connect with Spine-1: eth1|
+|Spine-2|eth1|10.123.1.5/30   |N/A |N/A            |p2p connect with Leaf-1: eth2|
+|Leaf-1 |eth2|10.123.1.6/30   |N/A |N/A            |p2p connect with Spine-2: eth1|
+|Spine-1|eth2|10.123.1.9/30   |N/A |N/A            |p2p connect with Leaf-2: eth1|
+|Leaf-2 |eth1|10.123.1.10/30  |N/A |N/A            |p2p connect with Spine-1: eth2|
+|Spine-2|eth2|10.123.1.13/30  |N/A |N/A            |p2p connect with Leaf-2: eth2|
+|Leaf-2 |eth2|10.123.1.14/30  |N/A |N/A            |p2p connect with Spine-2: eth2|
+|Spine-1|eth3|10.123.1.17/30  |N/A |N/A            |p2p connect with Leaf-3: eth1|
+|Leaf-3 |eth1|10.123.1.18/30  |N/A |N/A            |p2p connect with Spine-1: eth3|
+|Spine-2|eth3|10.123.1.21/30  |N/A |N/A            |p2p connect with Leaf-3: eth2|
+|Leaf-3 |eth2|10.123.1.22/30  |N/A |N/A            |p2p connect with Spine-2: eth3|
 
 ### Конфигурация сетевого оборудования
 Конфигурацию оборудования смотрите в **_Homework2_**
