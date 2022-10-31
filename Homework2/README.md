@@ -137,7 +137,7 @@ MTU         : 1500
 
 Перед тем, как приступисть к конфигурации маршрутизации в Underlay сети необходимо выполнить базовые настройки коммутаторов. В качестве примера рассмотрим базовую конфигурацию коммутатора **_"Leaf-1"_** более подробно. 
 
-Конфигурация коммутатора **_"Leaf-1"_**
+##### Конфигурация коммутатора **_"Leaf-1"_**
 
 Настройка имени хоста
 ```sh
@@ -213,3 +213,50 @@ interface loopback1
 cli alias name wr copy running-config startup-config
 ```
 
+Базовая конфигурация остальных коммутаторов настраивается идентичным образом. С базовой конфигурацией можно ознакомиться ниже.
+
+<details> 
+<summary> Конфигурация коммутатора <em>"Leaf-2"</em> </summary>
+
+  ```sh
+hostname Leaf-2
+
+feature interface-vlan
+
+no ip domain-lookup
+ip domain-name dc.lab
+
+vlan 100
+  name Clients
+  
+interface Vlan100
+  description GW_for_Clients->VLAN100
+  no shutdown
+  no ip redirects
+  ip address 10.123.100.1/24
+  
+interface Ethernet1/1
+  description to_Spine-1
+  no switchport
+  no ip redirects
+  ip address 10.123.1.5/31
+  no shutdown
+
+interface Ethernet1/2
+  description to_Spine-2
+  no switchport
+  no ip redirects
+  ip address 10.123.1.7/31
+  no shutdown
+
+interface loopback0
+  description RID
+  ip address 10.123.0.21/32
+
+interface loopback1
+  description VTEP
+  ip address 10.123.0.22/32
+
+cli alias name wr copy running-config startup-config
+```
+</details> 
