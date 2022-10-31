@@ -30,6 +30,7 @@
 ```sh
 set pcname Client1
 ip 10.123.100.10 255.255.255.0 10.123.100.1
+save
 ```
 
 <details> 
@@ -51,4 +52,84 @@ MTU         : 1500
 ```
 </details> 
 
+Конфигурация VPCS **_"Client2"_**
+
+```sh
+set pcname Client2
+ip 10.123.100.11 255.255.255.0 10.123.100.1
+save
+```
+
+<details> 
+
+<summary> Проверка конфигурации VPCS "Client2" </summary>
+
+```sh
+Client2> show ip
+
+NAME        : Client2[1]
+IP/MASK     : 10.123.100.11/24
+GATEWAY     : 10.123.100.1
+DNS         :
+MAC         : 00:50:79:66:68:07
+LPORT       : 20000
+RHOST:PORT  : 127.0.0.1:30000
+MTU         : 1500
+
+```
+</details> 
+
+Конфигурация VPCS **_"Client3"_**
+
+```sh
+set pcname Client3
+ip 10.123.100.12 255.255.255.0 10.123.100.1
+save
+```
+
+<details> 
+
+<summary> Проверка конфигурации VPCS "Client3" </summary>
+
+```sh
+Client3> show ip
+
+NAME        : Client3[1]
+IP/MASK     : 10.123.100.12/24
+GATEWAY     : 10.123.100.1
+DNS         :
+MAC         : 00:50:79:66:68:08
+LPORT       : 20000
+RHOST:PORT  : 127.0.0.1:30000
+MTU         : 1500
+
+```
+</details> 
+
+Конфигурация VPCS **_"Client4"_**
+
+```sh
+set pcname Client4
+ip 10.123.100.13 255.255.255.0 10.123.100.1
+save
+```
+
+<details> 
+
+<summary> Проверка конфигурации VPCS "Client4" </summary>
+
+```sh
+Client4> show ip
+
+NAME        : Client4[1]
+IP/MASK     : 10.123.100.13/24
+GATEWAY     : 10.123.100.1
+DNS         :
+MAC         : 00:50:79:66:68:09
+LPORT       : 20000
+RHOST:PORT  : 127.0.0.1:30000
+MTU         : 1500
+
+```
+</details> 
 
