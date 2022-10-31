@@ -34,7 +34,7 @@ ip 10.123.100.10 255.255.255.0 10.123.100.1
 
 <details> 
 
-<summary> Проверка конфигурации VPCS **_"Client1"_** </summary>
+<summary> Проверка конфигурации VPCS "Client1" </summary>
 
 ```sh
 Client1> show ip
@@ -50,3 +50,5 @@ MTU         : 1500
 
 ```
 </details> 
+
+
