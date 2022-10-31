@@ -21,7 +21,7 @@
 
 ## Выполнение домашнего задания
 
-### Конфигурация VPCS
+### 1. Конфигурация VPCS
 
 Первым шагом сконфигурируем устройства клиентов, которые, в дальнейшем, будут взаимодействовать между собой в рамках VxLAN фабрики.
 
@@ -132,4 +132,84 @@ MTU         : 1500
 
 ```
 </details> 
+
+### 1. Основная конфигурация Spine и Leaf коммутаторов
+
+Перед тем, как приступисть к конфигурации маршрутизации в Underlay сети необходимо выполнить базовые настройки коммутаторов. В качестве примера рассмотрим базовую конфигурацию коммутатора **_"Leaf-1"_** более подробно. 
+
+Конфигурация коммутатора **_"Leaf-1"_**
+
+Настройка имени хоста
+```sh
+hostname Leaf-1 
+```
+Включение функционала SVI для создания interface VLAN
+```sh
+feature interface-vlan
+```
+
+Выключаем разрешение доменных имен и задаем доменное имя _dc.lab_
+```sh
+no ip domain-lookup
+ip domain-name dc.lab
+```
+Создаем VLAN 100 и даем ему имя
+```sh
+vlan 100
+  name Clients
+```
+Создаем интерфейс VLAN100, который будет использоваться в качестве шлюза по умолчанию для клиентов в 100 VLAN'е
+```sh
+interface Vlan100
+  description GW_for_Clients->VLAN100
+  no shutdown
+  no ip redirects
+  ip address 10.123.100.1/24
+```
+
+Конфигурация p2p соединений между Leaf-1 и Spine коммутаторами. В режиме конфигурации физического интерфейса настраивается:
+1. описание интерфейса;
+2. переключение интерфейса в режим L3;
+3. отключение переадресации протокола ICMP
+4. IP-адрес и включение интерфейса.
+
+```sh
+interface Ethernet1/1
+  description to_Spine-1
+  no switchport
+  no ip redirects
+  ip address 10.123.1.1/31
+  no shutdown
+
+interface Ethernet1/2
+  description to_Spine-2
+  no switchport
+  no ip redirects
+  ip address 10.123.1.3/31
+  no shutdown
+```
+
+Конфигурация физического интерфейса, к которому подключен клиент. В режиме конфигурации интерфейса переводим интерфейс в режим L2 и режим "Access", далее назначаем интерфейс в VLAN 100.
+```sh
+interface ethernet 1/7
+  switchport
+  switchport mode access
+  switchport access vlan 100
+```
+
+Конфигурация Loopback интерфейсов.
+```sh
+interface loopback0
+  description RID
+  ip address 10.123.0.11/32
+
+interface loopback1
+  description VTEP
+  ip address 10.123.0.12/32
+```
+
+Конфигурация cli alias для упрощенного способа сохранения конфигурации.
+```sh
+cli alias name wr copy running-config startup-config
+```
 
