@@ -137,7 +137,7 @@ MTU         : 1500
 
 Перед тем, как приступисть к конфигурации маршрутизации в Underlay сети необходимо выполнить базовые настройки коммутаторов. В качестве примера рассмотрим базовую конфигурацию коммутатора **_"Leaf-1"_** более подробно. 
 
-##### Конфигурация коммутатора **_"Leaf-1"_**
+##### Конфигурация коммутатора _"Leaf-1"_
 
 Настройка имени хоста
 ```sh
@@ -256,6 +256,128 @@ interface loopback0
 interface loopback1
   description VTEP
   ip address 10.123.0.22/32
+
+cli alias name wr copy running-config startup-config
+```
+</details> 
+
+<details> 
+<summary> Конфигурация коммутатора <em>"Leaf-3"</em> </summary>
+
+  ```sh
+hostname Leaf-3
+
+feature interface-vlan
+
+no ip domain-lookup
+ip domain-name dc.lab
+
+vlan 100
+  name Clients
+  
+interface Vlan100
+  description GW_for_Clients->VLAN100
+  no shutdown
+  no ip redirects
+  ip address 10.123.100.1/24
+  
+interface Ethernet1/1
+  description to_Spine-1
+  no switchport
+  no ip redirects
+  ip address 10.123.1.9/31
+  no shutdown
+
+interface Ethernet1/2
+  description to_Spine-2
+  no switchport
+  no ip redirects
+  ip address 10.123.1.11/31
+  no shutdown
+
+interface loopback0
+  description RID
+  ip address 10.123.0.31/32
+
+interface loopback1
+  description VTEP
+  ip address 10.123.0.32/32
+
+cli alias name wr copy running-config startup-config
+```
+</details> 
+
+<details> 
+<summary> Конфигурация коммутатора <em>"Spine-1"</em> </summary>
+
+  ```sh
+hostname Spine-1
+
+no ip domain-lookup
+ip domain-name dc.lab
+  
+interface Ethernet1/1
+  description to_Leaf-1
+  no switchport
+  no ip redirects
+  ip address 10.123.1.0/31
+  no shutdown
+
+interface Ethernet1/2
+  description to_Leaf-2
+  no switchport
+  no ip redirects
+  ip address 10.123.1.4/31
+  no shutdown
+
+interface Ethernet1/3
+  description to_Leaf-3
+  no switchport
+  no ip redirects
+  ip address 10.123.1.8/31
+  no shutdown
+
+interface loopback0
+  description RID
+  ip address 10.123.0.41/32
+
+cli alias name wr copy running-config startup-config
+```
+</details> 
+
+<details> 
+<summary> Конфигурация коммутатора <em>"Spine-2"</em> </summary>
+
+  ```sh
+hostname Spine-2
+
+no ip domain-lookup
+ip domain-name dc.lab
+  
+interface Ethernet1/1
+  description to_Leaf-1
+  no switchport
+  no ip redirects
+  ip address 10.123.1.2/31
+  no shutdown
+
+interface Ethernet1/2
+  description to_Leaf-2
+  no switchport
+  no ip redirects
+  ip address 10.123.1.6/31
+  no shutdown
+
+interface Ethernet1/3
+  description to_Leaf-3
+  no switchport
+  no ip redirects
+  ip address 10.123.1.10/31
+  no shutdown
+
+interface loopback0
+  description RID
+  ip address 10.123.0.51/32
 
 cli alias name wr copy running-config startup-config
 ```
