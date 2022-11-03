@@ -449,3 +449,116 @@ _Примечание:_ BFD на стенде не поддерживается,
 
 ##### 3.1 Пример конфигурации OSPF на коммутаторе _"Leaf-1"_
 
+Включаем функционал OSPF
+```sh
+feature ospf
+```
+
+Настраиваем цепочку ключей, которая будет использоваться для аутентификации OSPF сессий.
+```sh
+key chain OSPF
+  key 0
+    key-string 7 070c285f4d06
+```
+
+Настраиваем OSPF Instance и Router ID. Также переводим все интерфейсы в пассивный режим.
+```sh
+router ospf UNDERLAY
+  router-id 10.123.0.11
+  passive-interface default
+```
+
+В режиме конфигурации физических интерфейсов:
+1. Ассоциируем сети с OSPF Instance и Area. 
+2. Настраиваем аутентификацию.
+3. Выводим интерфейсы, который участвуют в обмене пакетами LSDB, из пассивного режима
+4. Переводим интерфейс в режим point-to-point, чтобы исключить процесс выбора DR/BRD.
+
+```sh
+interface Ethernet1/1-2
+  ip ospf authentication message-digest
+  ip ospf authentication key-chain OSPF
+  ip ospf network point-to-point
+  no ip ospf passive-interface
+  ip router ospf UNDERLAY area 0.0.0.0
+```
+
+В режиме конфигурации Loopback интерфейсов:
+1. Ассоциируем сети с OSPF Instance и Area. 
+2. Переводим интерфейс в режим point-to-point, чтобы исключить процесс выбора DR/BRD.
+
+```sh
+interface loopback0
+  ip ospf network point-to-point
+  ip router ospf UNDERLAY area 0.0.0.0
+
+interface loopback1
+  ip ospf network point-to-point
+  ip router ospf UNDERLAY area 0.0.0.0
+```
+
+На остальных коммутаторах OSPF настраивается идентичным образом. С конфигурацией OSPF можно ознакомиться ниже.
+
+<details> 
+<summary> Конфигурация коммутатора <em>"Leaf-2"</em> </summary>
+
+  ```sh
+feature ospf
+
+key chain OSPF
+  key 0
+    key-string 7 070c285f4d06
+
+router ospf UNDERLAY
+  router-id 10.123.0.21
+  passive-interface default
+  
+interface Ethernet1/1-2
+  ip ospf authentication message-digest
+  ip ospf authentication key-chain OSPF
+  ip ospf network point-to-point
+  no ip ospf passive-interface
+  ip router ospf UNDERLAY area 0.0.0.0
+
+interface loopback0
+  ip ospf network point-to-point
+  ip router ospf UNDERLAY area 0.0.0.0
+
+interface loopback1
+  ip ospf network point-to-point
+  ip router ospf UNDERLAY area 0.0.0.0
+
+```
+</details> 
+
+<details> 
+<summary> Конфигурация коммутатора <em>"Leaf-3"</em> </summary>
+
+  ```sh
+feature ospf
+
+key chain OSPF
+  key 0
+    key-string 7 070c285f4d06
+
+router ospf UNDERLAY
+  router-id 10.123.0.31
+  passive-interface default
+  
+interface Ethernet1/1-2
+  ip ospf authentication message-digest
+  ip ospf authentication key-chain OSPF
+  ip ospf network point-to-point
+  no ip ospf passive-interface
+  ip router ospf UNDERLAY area 0.0.0.0
+
+interface loopback0
+  ip ospf network point-to-point
+  ip router ospf UNDERLAY area 0.0.0.0
+
+interface loopback1
+  ip ospf network point-to-point
+  ip router ospf UNDERLAY area 0.0.0.0
+
+```
+</details> 
