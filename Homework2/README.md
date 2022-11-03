@@ -192,6 +192,7 @@ interface Ethernet1/2
 Конфигурация физического интерфейса, к которому подключен клиент. В режиме конфигурации интерфейса переводим интерфейс в режим L2 и режим "Access", далее назначаем интерфейс в VLAN 100.
 ```sh
 interface ethernet 1/7
+  description VPCs
   switchport
   switchport mode access
   switchport access vlan 100
@@ -248,6 +249,12 @@ interface Ethernet1/2
   no ip redirects
   ip address 10.123.1.7/31
   no shutdown
+  
+  interface ethernet 1/7
+  description VPCs
+  switchport
+  switchport mode access
+  switchport access vlan 100
 
 interface loopback0
   description RID
@@ -294,6 +301,12 @@ interface Ethernet1/2
   no ip redirects
   ip address 10.123.1.11/31
   no shutdown
+  
+interface ethernet 1/6-7
+  description VPCs
+  switchport
+  switchport mode access
+  switchport access vlan 100
 
 interface loopback0
   description RID
