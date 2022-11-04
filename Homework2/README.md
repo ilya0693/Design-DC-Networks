@@ -562,3 +562,65 @@ interface loopback1
 
 ```
 </details> 
+
+<details> 
+<summary> Конфигурация коммутатора <em>"Spine-1"</em> </summary>
+
+  ```sh
+feature ospf
+
+key chain OSPF
+  key 0
+    key-string 7 070c285f4d06
+
+router ospf UNDERLAY
+  router-id 10.123.0.41
+  passive-interface default
+  
+interface Ethernet1/1-3
+  ip ospf authentication message-digest
+  ip ospf authentication key-chain OSPF
+  ip ospf network point-to-point
+  no ip ospf passive-interface
+  ip router ospf UNDERLAY area 0.0.0.0
+
+interface loopback0
+  ip ospf network point-to-point
+  ip router ospf UNDERLAY area 0.0.0.0
+```
+</details> 
+
+<details> 
+<summary> Конфигурация коммутатора <em>"Spine-2"</em> </summary>
+
+  ```sh
+feature ospf
+
+key chain OSPF
+  key 0
+    key-string 7 070c285f4d06
+
+router ospf UNDERLAY
+  router-id 10.123.0.51
+  passive-interface default
+  
+interface Ethernet1/1-3
+  ip ospf authentication message-digest
+  ip ospf authentication key-chain OSPF
+  ip ospf network point-to-point
+  no ip ospf passive-interface
+  ip router ospf UNDERLAY area 0.0.0.0
+
+interface loopback0
+  ip ospf network point-to-point
+  ip router ospf UNDERLAY area 0.0.0.0
+```
+</details> 
+
+##### 3.2 Проверка работоспособности протокола OSPF
+После настройки маршрутизации по протоколу OSPF проверим, что у нас установилось соседство и коммутаторы обмениваются маршрутной информацией. В качестве примера, проверим работоспособность маршрутизации OSPF со стороны коммутатора *_Leaf-1_*
+
+1. Проверка установления соседства
+ ```sh
+feature ospf
+```
