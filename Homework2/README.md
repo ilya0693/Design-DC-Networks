@@ -618,9 +618,165 @@ interface loopback0
 </details> 
 
 ##### 3.2 Проверка работоспособности протокола OSPF
-После настройки маршрутизации по протоколу OSPF проверим, что у нас установилось соседство и коммутаторы обмениваются маршрутной информацией. В качестве примера, проверим работоспособность маршрутизации OSPF со стороны коммутатора *_Leaf-1_*
+После настройки маршрутизации по протоколу OSPF проверим, что у нас установилось соседство и коммутаторы обмениваются маршрутной информацией. В качестве примера, проверим работоспособность маршрутизации OSPF со стороны коммутатора **_Leaf-1_**
 
 1. Проверка установления соседства
  ```sh
-feature ospf
+Leaf-1# show ip ospf neighbors
+ OSPF Process ID UNDERLAY VRF default
+ Total number of neighbors: 2
+ Neighbor ID     Pri State            Up Time  Address         Interface
+ 10.123.0.41       1 FULL/ -          00:22:50 10.123.1.0      Eth1/1
+ 10.123.0.51       1 FULL/ -          00:20:33 10.123.1.2      Eth1/2
 ```
+Как мы видим, соседство установлено успешно.
+
+2. Проверка интерфейсов, задействованных в OSPF instance и их состояние.
+ ```sh
+Leaf-1# show ip ospf interface
+ Ethernet1/1 is up, line protocol is up
+    IP address 10.123.1.1/31
+    Process ID UNDERLAY VRF default, area 0.0.0.0
+    Enabled by interface configuration
+    State P2P, Network type P2P, cost 40
+    Index 1, Transmit delay 1 sec
+    1 Neighbors, flooding to 1, adjacent with 1
+    Timer intervals: Hello 10, Dead 40, Wait 40, Retransmit 5
+      Hello timer due in 00:00:04
+    Message-digest authentication, using keychain OSPF (ready)
+      Sending SA: Default key id 0, Default algorithm MD5
+    Number of opaque link LSAs: 0, checksum sum 0
+    Interface ospf state change count: 6
+ Ethernet1/2 is up, line protocol is up
+    IP address 10.123.1.3/31
+    Process ID UNDERLAY VRF default, area 0.0.0.0
+    Enabled by interface configuration
+    State P2P, Network type P2P, cost 40
+    Index 2, Transmit delay 1 sec
+    1 Neighbors, flooding to 1, adjacent with 1
+    Timer intervals: Hello 10, Dead 40, Wait 40, Retransmit 5
+      Hello timer due in 00:00:00
+    Message-digest authentication, using keychain OSPF (ready)
+      Sending SA: Default key id 0, Default algorithm MD5
+    Number of opaque link LSAs: 0, checksum sum 0
+    Interface ospf state change count: 6
+ loopback0 is up, line protocol is up
+    IP address 10.123.0.11/32
+    Process ID UNDERLAY VRF default, area 0.0.0.0
+    Enabled by interface configuration
+    State P2P, Network type P2P, cost 1
+    Index 3, Transmit delay 1 sec
+    0 Neighbors, flooding to 0, adjacent with 0
+    Timer intervals: Hello 10, Dead 40, Wait 40, Retransmit 5
+      Hello timer due in 00:00:04
+    No authentication
+    Number of opaque link LSAs: 0, checksum sum 0
+    Interface ospf state change count: 3
+ loopback1 is up, line protocol is up
+    IP address 10.123.0.12/32
+    Process ID UNDERLAY VRF default, area 0.0.0.0
+    Enabled by interface configuration
+    State P2P, Network type P2P, cost 1
+    Index 4, Transmit delay 1 sec
+    0 Neighbors, flooding to 0, adjacent with 0
+    Timer intervals: Hello 10, Dead 40, Wait 40, Retransmit 5
+      Hello timer due in 00:00:02
+    No authentication
+    Number of opaque link LSAs: 0, checksum sum 0
+    Interface ospf state change count: 3
+```
+Из результатов вывода команды видно, что интерфейсы в активном состоянии и на них используется аутентификация.
+
+3. Просмотр базы данных OSPF.
+ ```sh
+Leaf-1# show ip ospf database
+        OSPF Router with ID (10.123.0.11) (Process ID UNDERLAY VRF default)
+
+                Router Link States (Area 0.0.0.0)
+
+Link ID         ADV Router      Age        Seq#       Checksum Link Count
+10.123.0.11     10.123.0.11     1608       0x80000008 0xb7dc   6
+10.123.0.21     10.123.0.21     1607       0x80000009 0xfb5f   6
+10.123.0.31     10.123.0.31     1603       0x80000008 0x44df   6
+10.123.0.41     10.123.0.41     1714       0x80000009 0xde08   7
+10.123.0.51     10.123.0.51     1598       0x80000007 0x734b   7
+```
+
+4. Просмотр маршрутов OSPF.
+ ```sh
+Leaf-1# show ip ospf route
+ OSPF Process ID UNDERLAY VRF default, Routing Table
+  (D) denotes route is directly attached      (R) denotes route is in RIB
+  (L) denotes route label is in ULIB          (NHR) denotes next-hop is in RIB
+10.123.0.11/32 (intra)(D) area 0.0.0.0
+     via 10.123.0.11/Lo0*  , cost 1 distance 110 (NHR)
+10.123.0.12/32 (intra)(D) area 0.0.0.0
+     via 10.123.0.12/Lo1*  , cost 1 distance 110 (NHR)
+10.123.0.21/32 (intra)(R) area 0.0.0.0
+     via 10.123.1.0/Eth1/1  , cost 81 distance 110 (NHR)
+     via 10.123.1.2/Eth1/2  , cost 81 distance 110 (NHR)
+10.123.0.22/32 (intra)(R) area 0.0.0.0
+     via 10.123.1.0/Eth1/1  , cost 81 distance 110 (NHR)
+     via 10.123.1.2/Eth1/2  , cost 81 distance 110 (NHR)
+10.123.0.31/32 (intra)(R) area 0.0.0.0
+     via 10.123.1.0/Eth1/1  , cost 81 distance 110 (NHR)
+     via 10.123.1.2/Eth1/2  , cost 81 distance 110 (NHR)
+10.123.0.32/32 (intra)(R) area 0.0.0.0
+     via 10.123.1.0/Eth1/1  , cost 81 distance 110 (NHR)
+     via 10.123.1.2/Eth1/2  , cost 81 distance 110 (NHR)
+10.123.0.41/32 (intra)(R) area 0.0.0.0
+     via 10.123.1.0/Eth1/1  , cost 41 distance 110 (NHR)
+10.123.0.51/32 (intra)(R) area 0.0.0.0
+     via 10.123.1.2/Eth1/2  , cost 41 distance 110 (NHR)
+10.123.1.0/31 (intra)(D) area 0.0.0.0
+     via 10.123.1.0/Eth1/1*  , cost 40 distance 110 (NHR)
+10.123.1.2/31 (intra)(D) area 0.0.0.0
+     via 10.123.1.2/Eth1/2*  , cost 40 distance 110 (NHR)
+10.123.1.4/31 (intra)(R) area 0.0.0.0
+     via 10.123.1.0/Eth1/1  , cost 80 distance 110 (NHR)
+10.123.1.6/31 (intra)(R) area 0.0.0.0
+     via 10.123.1.2/Eth1/2  , cost 80 distance 110 (NHR)
+10.123.1.8/31 (intra)(R) area 0.0.0.0
+     via 10.123.1.0/Eth1/1  , cost 80 distance 110 (NHR)
+10.123.1.10/31 (intra)(R) area 0.0.0.0
+     via 10.123.1.2/Eth1/2  , cost 80 distance 110 (NHR)
+```
+
+Из маршрутной информации видно, что для коммутатора **_Leaf-1_** коммутаторы **_Leaf-2_** и **_Leaf-3_** достижимы через 2 коммутатора _Spine_ одновременно, то есть, у нас используется балансировка трафика с равной стоимостью из-за наличия одинакового пути.
+
+##### 3.3 Проверка доступности сетевых узлов.
+После настройки маршрутизации OSPF проверим, что коммутаторы "видят" друг друга. Для проверки доступности сетевых узлов будем использовать протокол ICMP, а именно команду ping и traceroute, запускаемые на коммутаторах ЦОД. Для упрощения тестирования целесообразно проверять доступность Loopback интерфейсов, так как доступность Loopback интерфейсов также подтверждает доступность физических интерфейсов. Ниже представлен пример доступности интерфейса Loopback1, который настроен на коммутаторе Leaf-3. Проверка проводилась с коммутатора Leaf-1.
+
+```sh
+Leaf-1# ping 10.123.0.32 source 10.123.0.12
+PING 10.123.0.32 (10.123.0.32) from 10.123.0.12: 56 data bytes
+64 bytes from 10.123.0.32: icmp_seq=0 ttl=253 time=9.549 ms
+64 bytes from 10.123.0.32: icmp_seq=1 ttl=253 time=6.283 ms
+64 bytes from 10.123.0.32: icmp_seq=2 ttl=253 time=5.196 ms
+64 bytes from 10.123.0.32: icmp_seq=3 ttl=253 time=8.832 ms
+64 bytes from 10.123.0.32: icmp_seq=4 ttl=253 time=4.853 ms
+
+--- 10.123.0.32 ping statistics ---
+5 packets transmitted, 5 packets received, 0.00% packet loss
+round-trip min/avg/max = 4.853/6.942/9.549 ms
+
+Leaf-1# traceroute 10.123.0.32 source 10.123.0.12
+traceroute to 10.123.0.32 (10.123.0.32) from 10.123.0.12 (10.123.0.12), 30 hops max, 40 byte packets
+ 1  10.123.1.2 (10.123.1.2)  4.996 ms  5.358 ms  3.425 ms
+ 2  10.123.0.32 (10.123.0.32)  10.606 ms  11.046 ms  10.766 ms
+
+```
+
+Результаты тестирования приведены в таблице 2.
+
+Таблица 2 - Результаты тестирования
+|Коммутатор источник |IP-адрес источника     |Коммутатор назначения |IP-адрес назначения|Результат тестирования|
+|--------------------|-----------------------|----------------------|-------------------|----------------------|
+|Leaf-1              |10.123.0.12            |Leaf-2                |10.123.0.22        |Успешно               |
+|Leaf-1              |10.123.0.12            |Leaf-3                |10.123.0.32        |Успешно               |
+|Leaf-1              |10.123.0.12            |Spine-1               |10.123.0.41        |Успешно               |
+|Leaf-1              |10.123.0.12            |Spine-2               |10.123.0.41        |Успешно               |
+
+_Примечание_: В таблице приведены результаты тестирования только с коммутатора Leaf-1. С остальных коммутаторов результаты также положительные.
+
+С полной версией конфигурации каждого сетевого оборудования можно ознакомиться здесь.
