@@ -17,10 +17,8 @@
 
 ![alt-текст](https://github.com/ilya0693/Design-DC-Networks/blob/main/Homework2/Stand_OSPF.png "Схема стенда")
 
-### Описание протокола
-
 <details>
-  
+
 <summary> Описание протокола </summary>
 
 #### OSPF (Open Shortest Path First) 
