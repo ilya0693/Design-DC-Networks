@@ -51,3 +51,112 @@ ip 10.123.100.13 255.255.255.0 10.123.100.1
 save
 ```
 </details>
+
+<details>
+
+<summary> Базовая конфигурация коммутаторов NX-OS </summary>
+
+Конфигурация коммутатора Leaf-1
+  ```sh
+hostname Leaf-1
+
+feature interface-vlan
+
+no ip domain-lookup
+ip domain-name dc.lab
+
+vlan 100
+  name Clients
+  
+interface Vlan100
+  description GW_for_Clients->VLAN100
+  no shutdown
+  no ip redirects
+  ip address 10.123.100.1/24
+  
+interface Ethernet1/1
+  description to_Spine-1
+  no switchport
+  no ip redirects
+  ip address 10.123.1.1/31
+  no shutdown
+
+interface Ethernet1/2
+  description to_Spine-2
+  no switchport
+  no ip redirects
+  ip address 10.123.1.3/31
+  no shutdown
+  
+  interface ethernet 1/7
+  description VPCs
+  switchport
+  switchport mode access
+  switchport access vlan 100
+
+interface loopback0
+  description RID
+  ip address 10.123.0.11/32
+
+interface loopback1
+  description VTEP
+  ip address 10.123.0.12/32
+  
+boot nxos bootflash:nxos.9.3.10.bin
+
+cli alias name wr copy running-config startup-config
+```
+
+Конфигурация коммутатора Leaf-2
+  ```sh
+hostname Leaf-2
+
+feature interface-vlan
+
+no ip domain-lookup
+ip domain-name dc.lab
+
+vlan 100
+  name Clients
+  
+interface Vlan100
+  description GW_for_Clients->VLAN100
+  no shutdown
+  no ip redirects
+  ip address 10.123.100.1/24
+  
+interface Ethernet1/1
+  description to_Spine-1
+  no switchport
+  no ip redirects
+  ip address 10.123.1.5/31
+  no shutdown
+
+interface Ethernet1/2
+  description to_Spine-2
+  no switchport
+  no ip redirects
+  ip address 10.123.1.7/31
+  no shutdown
+  
+  interface ethernet 1/7
+  description VPCs
+  switchport
+  switchport mode access
+  switchport access vlan 100
+
+interface loopback0
+  description RID
+  ip address 10.123.0.21/32
+
+interface loopback1
+  description VTEP
+  ip address 10.123.0.22/32
+  
+boot nxos bootflash:nxos.9.3.10.bin
+
+cli alias name wr copy running-config startup-config
+```
+  
+</details>
+
