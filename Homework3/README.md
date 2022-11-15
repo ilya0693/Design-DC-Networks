@@ -245,5 +245,40 @@ boot nxos bootflash:nxos.9.3.10.bin
   
 cli alias name wr copy running-config startup-config
 ```
+
+Конфигурация коммутатора **_Spine-2_**
+ ```sh
+hostname Spine-2
+
+no ip domain-lookup
+ip domain-name dc.lab
+  
+interface Ethernet1/1
+  description to_Leaf-1
+  no switchport
+  no ip redirects
+  ip address 10.123.1.2/31
+  no shutdown
+
+interface Ethernet1/2
+  description to_Leaf-2
+  no switchport
+  no ip redirects
+  ip address 10.123.1.6/31
+  no shutdown
+
+interface Ethernet1/3
+  description to_Leaf-3
+  no switchport
+  no ip redirects
+  ip address 10.123.1.10/31
+  no shutdown
+
+interface loopback0
+  description RID
+  ip address 10.123.0.51/32
+
+cli alias name wr copy running-config startup-config
+```
 </details>
 
