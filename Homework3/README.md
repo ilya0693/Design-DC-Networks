@@ -16,3 +16,40 @@
 В данном задании стенд собран, согласно схеме, спроектированной в 1ом домашнем задании. Ниже предаставлена реализация спроектируемой сети в эмуляторе EVE-NG. С L2 и L3 схемой сети можно ознакомиться по [ссылке](https://github.com/ilya0693/Design-DC-Networks/blob/main/Homework1/README.md#%D1%82%D0%BE%D0%BF%D0%BE%D0%BB%D0%BE%D0%B3%D0%B8%D1%8F-%D1%81%D0%B5%D1%82%D0%B8-%D1%86%D0%BE%D0%B4-%D0%B8-%D0%B5%D0%B5-%D0%BE%D0%BF%D0%B8%D1%81%D0%B0%D0%BD%D0%B8%D0%B5).
 
 ![alt-текст](https://github.com/ilya0693/Design-DC-Networks/blob/main/Homework2/Stand_OSPF.png "Схема стенда")
+
+<details>
+
+<summary> Базовая конфигурация VPCs </summary>
+
+Конфигурация VPCS **_"Client1"_**
+```sh
+set pcname Client1
+ip 10.123.100.10 255.255.255.0 10.123.100.1
+save
+```
+
+Конфигурация VPCS **_"Client2"_**
+```sh
+set pcname Client2
+ip 10.123.100.11 255.255.255.0 10.123.100.1
+save
+```
+
+Конфигурация VPCS **_"Client3"_**
+
+```sh
+set pcname Client3
+ip 10.123.100.12 255.255.255.0 10.123.100.1
+save
+```
+
+Конфигурация VPCS **_"Client4"_**
+
+```sh
+set pcname Client4
+ip 10.123.100.13 255.255.255.0 10.123.100.1
+save
+```
+</details>
+
+<details> 
