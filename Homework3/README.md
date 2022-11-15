@@ -278,7 +278,8 @@ interface loopback0
   description RID
   ip address 10.123.0.51/32
 
+boot nxos bootflash:nxos.9.3.10.bin  
+  
 cli alias name wr copy running-config startup-config
 ```
 </details>
-
