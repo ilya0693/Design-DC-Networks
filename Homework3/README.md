@@ -372,3 +372,60 @@ NET ID обозначает следующее:
 3. System ID - 0010.0123.0011. Это идентификатор, в нашем случае, коммутатора Leaf-1. У каждого коммутатора в топологии он должен быть уникальным, поскольку именно по System ID коммутатора "узнают" друг друга при осознании топологии.
 4. Selector - 00. Значение Selector, равное 00, обозначало в NET адресах, что адрес принадлежит самому маршрутизатору. В большинстве случаев он всегда равен нулю.
 
+Далее в режиме конфигурации физических интерфейсов настраиваем:
+1. Ассоциируем интерфейсы с ISIS Instance. 
+2. Настраиваем аутентификацию.
+3. Переводим интерфейс в режим point-to-point, для "упрощенного" согласования соседства и исключения выбора DIS.
+
+```sh
+interface Ethernet1/1-2
+  isis authentication-type md5 level-1
+  isis authentication key-chain ISIS
+  medium p2p
+  isis authentication-check level-1
+  ip router isis UNDERLAY
+```
+
+В режиме конфигурации Loopback интерфейсов ассоциируем интерфейсы с ISIS Instance.
+```sh
+interface loopback0
+  ip router isis UNDERLAY
+
+interface loopback1
+  ip router isis UNDERLAY
+```
+
+На остальных Leaf коммутаторах ISIS настраивается идентичным образом. С конфигурацией ISIS можно ознакомиться ниже.
+
+<details> 
+<summary> Конфигурация коммутатора <em>"Leaf-2"</em> </summary>
+
+  ```sh
+feature isis
+
+key chain ISIS
+  key 0
+    key-string 7 070c285f4d06
+
+router isis UNDERLAY
+  net 49.1234.0010.0123.0021.00
+  is-type level-1
+  dynamic-flooding
+    algorithm algorithm-id 128 algorithm-name cisco-dual-spt-v1
+  
+interface Ethernet1/1-2
+  isis authentication-type md5 level-1
+  isis authentication key-chain ISIS
+  medium p2p
+  isis authentication-check level-1
+  ip router isis UNDERLAY
+
+interface loopback0
+  ip router isis UNDERLAY
+
+interface loopback1
+  ip router isis UNDERLAY
+
+```
+</details> 
+
