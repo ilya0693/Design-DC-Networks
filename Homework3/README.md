@@ -429,3 +429,35 @@ interface loopback1
 ```
 </details> 
 
+<details> 
+<summary> Конфигурация коммутатора <em>"Leaf-3"</em> </summary>
+
+  ```sh
+feature isis
+
+key chain ISIS
+  key 0
+    key-string 7 070c285f4d06
+
+router isis UNDERLAY
+  net 49.1234.0010.0123.0031.00
+  is-type level-1
+  dynamic-flooding
+    algorithm algorithm-id 128 algorithm-name cisco-dual-spt-v1
+  
+interface Ethernet1/1-2
+  isis authentication-type md5 level-1
+  isis authentication key-chain ISIS
+  medium p2p
+  isis authentication-check level-1
+  ip router isis UNDERLAY
+
+interface loopback0
+  ip router isis UNDERLAY
+
+interface loopback1
+  ip router isis UNDERLAY
+
+```
+</details> 
+
