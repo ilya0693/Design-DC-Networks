@@ -401,30 +401,30 @@ interface loopback1
 <summary> Конфигурация коммутатора <em>"Leaf-2"</em> </summary>
 
   ```sh
-feature isis
+feature ospf
 
-key chain ISIS
+key chain OSPF
   key 0
     key-string 7 070c285f4d06
 
-router isis UNDERLAY
-  net 49.1234.0010.0123.0021.00
-  is-type level-1
-  dynamic-flooding
-    algorithm algorithm-id 128 algorithm-name cisco-dual-spt-v1
+router ospf UNDERLAY
+  router-id 10.123.0.21
+  passive-interface default
   
 interface Ethernet1/1-2
-  isis authentication-type md5 level-1
-  isis authentication key-chain ISIS
-  medium p2p
-  isis authentication-check level-1
-  ip router isis UNDERLAY
+  ip ospf authentication message-digest
+  ip ospf authentication key-chain OSPF
+  ip ospf network point-to-point
+  no ip ospf passive-interface
+  ip router ospf UNDERLAY area 0.0.0.0
 
 interface loopback0
-  ip router isis UNDERLAY
+  ip ospf network point-to-point
+  ip router ospf UNDERLAY area 0.0.0.0
 
 interface loopback1
-  ip router isis UNDERLAY
+  ip ospf network point-to-point
+  ip router ospf UNDERLAY area 0.0.0.0
 
 ```
 </details> 
@@ -433,31 +433,30 @@ interface loopback1
 <summary> Конфигурация коммутатора <em>"Leaf-3"</em> </summary>
 
   ```sh
-feature isis
+feature ospf
 
-  
-key chain ISIS
+key chain OSPF
   key 0
     key-string 7 070c285f4d06
 
-router isis UNDERLAY
-  net 49.1234.0010.0123.0031.00
-  is-type level-1
-  dynamic-flooding
-    algorithm algorithm-id 128 algorithm-name cisco-dual-spt-v1
+router ospf UNDERLAY
+  router-id 10.123.0.31
+  passive-interface default
   
 interface Ethernet1/1-2
-  isis authentication-type md5 level-1
-  isis authentication key-chain ISIS
-  medium p2p
-  isis authentication-check level-1
-  ip router isis UNDERLAY
+  ip ospf authentication message-digest
+  ip ospf authentication key-chain OSPF
+  ip ospf network point-to-point
+  no ip ospf passive-interface
+  ip router ospf UNDERLAY area 0.0.0.0
 
 interface loopback0
-  ip router isis UNDERLAY
+  ip ospf network point-to-point
+  ip router ospf UNDERLAY area 0.0.0.0
 
 interface loopback1
-  ip router isis UNDERLAY
+  ip ospf network point-to-point
+  ip router ospf UNDERLAY area 0.0.0.0
 
 ```
 </details> 
