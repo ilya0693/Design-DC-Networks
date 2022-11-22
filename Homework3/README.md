@@ -290,9 +290,10 @@ cli alias name wr copy running-config startup-config
 <summary>Полезные команды </summary>
 
 ```
-sh isis neighbors
-sh ip route
-sh isis topology
+show isis
+show isis interface
+show ip route
+show isis adjacency 
 ```
 
 </details>
