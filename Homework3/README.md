@@ -66,10 +66,10 @@ no ip domain-lookup
 ip domain-name dc.lab
 
 vlan 100
-  name Clients
+  name Servers
   
 interface Vlan100
-  description GW_for_Clients->VLAN100
+  description GW_for_Servers->VLAN100
   no shutdown
   no ip redirects
   ip address 10.123.100.1/24
@@ -117,10 +117,10 @@ no ip domain-lookup
 ip domain-name dc.lab
 
 vlan 100
-  name Clients
+  name Servers
   
 interface Vlan100
-  description GW_for_Clients->VLAN100
+  description GW_for_Servers->VLAN100
   no shutdown
   no ip redirects
   ip address 10.123.100.1/24
@@ -140,7 +140,7 @@ interface Ethernet1/2
   no shutdown
   
   interface ethernet 1/7
-  description VPCs
+  description Server-2
   switchport
   switchport mode access
   switchport access vlan 100
@@ -168,10 +168,10 @@ no ip domain-lookup
 ip domain-name dc.lab
 
 vlan 100
-  name Clients
+  name Servers
   
 interface Vlan100
-  description GW_for_Clients->VLAN100
+  description GW_for_Servers->VLAN100
   no shutdown
   no ip redirects
   ip address 10.123.100.1/24
@@ -191,7 +191,13 @@ interface Ethernet1/2
   no shutdown
   
 interface ethernet 1/6-7
-  description VPCs
+  description Server-3
+  switchport
+  switchport mode access
+  switchport access vlan 100
+  
+interface ethernet 1/7
+  description Server-4
   switchport
   switchport mode access
   switchport access vlan 100
