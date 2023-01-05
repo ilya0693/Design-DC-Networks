@@ -363,13 +363,11 @@ key chain ISIS
     key-string 7 070c285f4d06
 ```
 
-Настраиваем ISIS Instance и NET ID. Также глобально задаем уровень взаимодействия между коммутаторами NX-OS и настроем динамическое распределение LSP.
+Настраиваем ISIS Instance и NET ID. Также глобально задаем уровень взаимодействия между коммутаторами NX-OS.
 ```sh
 router isis UNDERLAY
   net 49.1234.0010.0123.0011.00
   is-type level-1
-  dynamic-flooding
-    algorithm algorithm-id 128 algorithm-name cisco-dual-spt-v1
 ```
 
 NET ID обозначает следующее:
@@ -416,8 +414,6 @@ key chain ISIS
 router isis UNDERLAY
   net 49.1234.0010.0123.0021.00
   is-type level-1
-  dynamic-flooding
-    algorithm algorithm-id 128 algorithm-name cisco-dual-spt-v1
 
 interface Ethernet1/1-2
   isis authentication-type md5 level-1
@@ -447,8 +443,6 @@ key chain ISIS
 router isis UNDERLAY
   net 49.1234.0010.0123.0031.00
   is-type level-1
-  dynamic-flooding
-    algorithm algorithm-id 128 algorithm-name cisco-dual-spt-v1
 
 interface Ethernet1/1-2
   isis authentication-type md5 level-1
@@ -465,70 +459,19 @@ interface loopback1
 ```
 </details> 
 
+<details> 
+<summary> Конфигурация коммутатора <em>"Spine-1"</em> </summary>
 
-##### 1.2. Пример конфигурации IS-IS на коммутаторе _"Spine-1"_
-
-Акцентируем внимание на конфигурацию ISIS коммутаторов Spine, так как в настройках есть некоторые отличия при настройке динамического распределения LSP. В качестве примера рассмотрим конфигурацию коммутатора Spine-1.
-
-Включаем функционал ISIS
 ```sh
 feature isis
-```
 
-Настраиваем цепочку ключей, которая будет использоваться для аутентификации ISIS сессий.
-```sh
 key chain ISIS
   key 0
     key-string 7 070c285f4d06
-```
 
-Настраиваем ISIS Instance и NET ID. Также глобально задаем уровень взаимодействия между коммутаторами NX-OS и настроем динамическое распределение LSP. Так как Spine коммутаторы являются лидерами области для динамического распределения LSP, на них необходимо задать приоритеты. Чем выше приоритет, тем предпочтительней лидер области. В нашей топологии "основным лидером" для динамического распределения LSP будет Spine-1, резервным - Spine-2.
-```sh
 router isis UNDERLAY
   net 49.1234.0010.0123.0041.00
-  is-type level-1
-  dynamic-flooding
-    algorithm algorithm-id 128 algorithm-name cisco-dual-spt-v1
-    area-leader priority 20 algorithm-id 128
-```
-
-Далее в режиме конфигурации физических интерфейсов настраиваем:
-1. Ассоциацию интерфейсов с ISIS Instance. 
-2. Аутентификацию.
-3. Интерфейс в режим point-to-point, для "упрощенного" согласования соседства и исключения выбора DIS.
-
-```sh
-interface Ethernet1/1-3
-  isis authentication-type md5 level-1
-  isis authentication key-chain ISIS
-  medium p2p
-  isis authentication-check level-1
-  ip router isis UNDERLAY
-```
-
-В режиме конфигурации Loopback ассоциируем интерфейс с ISIS Instance.
-```sh
-interface loopback0
-  ip router isis UNDERLAY
-```
-
-На Spine-2 коммутаторе ISIS настраивается идентичным образом. С конфигурацией ISIS можно ознакомиться ниже.
-<details> 
-<summary> Конфигурация коммутатора <em>"Spine-2"</em> </summary>
-
-```sh
-feature isis
-
-key chain ISIS
-  key 0
-    key-string 7 070c285f4d06
-
-router isis UNDERLAY
-  net 49.1234.0010.0123.0051.00
-  is-type level-1
-  dynamic-flooding
-    algorithm algorithm-id 128 algorithm-name cisco-dual-spt-v1
-    area-leader priority 10 algorithm-id 128
+  is-type level-1-2
 
 interface Ethernet1/1-3
   isis authentication-type md5 level-1
@@ -542,10 +485,250 @@ interface loopback0
 ```
 </details> 
 
-##### 1.3. Проверка работоспособности протокола ISIS
-**Информация будет добавлена позже**
+<details> 
+<summary> Конфигурация коммутатора <em>"Spine-2"</em> </summary>
 
+```sh
+feature isis
 
+key chain ISIS
+  key 0
+    key-string 7 070c285f4d06
+
+router isis UNDERLAY
+  net 49.1234.0010.0123.0051.00
+  is-type level-1-2
+
+interface Ethernet1/1-3
+  isis authentication-type md5 level-1
+  isis authentication key-chain ISIS
+  medium p2p
+  isis authentication-check level-1
+  ip router isis UNDERLAY
+
+interface loopback0
+  ip router isis UNDERLAY
+```
+</details> 
+
+##### 1.2. Проверка работоспособности протокола ISIS
+После настройки маршрутизации по протоколу ISIS проверим, что у нас установилось соседство и коммутаторы обмениваются маршрутной информацией. В качестве примера, проверим работоспособность маршрутизации ISIS со стороны коммутатора **_Leaf-1_**
+
+1. Проверка установления соседства
+ ```sh
+Leaf-1# show isis adjacency
+IS-IS process: UNDERLAY VRF: default
+IS-IS adjacency database:
+Legend: '!': No AF level connectivity in given topology
+System ID       SNPA            Level  State  Hold Time  Interface
+Spine-1         N/A             1      UP     00:00:30   Ethernet1/1
+Spine-2         N/A             1      UP     00:00:30   Ethernet1/2
+```
+Как мы видим, соседство установлено успешно.
+
+2. Проверка интерфейсов, задействованных в ISIS instance и их состояние.
+ ```sh
+Leaf-1# show isis interface
+IS-IS process: UNDERLAY VRF: default
+loopback0, Interface status: protocol-up/link-up/admin-up
+  IP address: 10.123.0.11, IP subnet: 10.123.0.11/32
+  IPv6 routing is disabled
+  Level1
+    No auth type and keychain
+    Auth check set
+  Level2
+    No auth type and keychain
+    Auth check set
+  Index: 0x0003, Local Circuit ID: 0x01, Circuit Type: L1
+  BFD IPv4 is locally disabled for Interface loopback0
+  BFD does not support AF IPv4
+  BFD IPv6 is locally disabled for Interface loopback0
+  BFD does not support AF IPv6
+  MTR is disabled
+  Passive level: level-2
+  Level      Metric
+  1               1
+  2               1
+  Topologies enabled:
+    L  MT  Metric  MetricCfg  Fwdng IPV4-MT  IPV4Cfg  IPV6-MT  IPV6Cfg
+    1  0        1       no   UP    UP       yes      DN       no
+    2  0        1       no   DN    DN       no       DN       no
+
+loopback1, Interface status: protocol-up/link-up/admin-up
+  IP address: 10.123.0.12, IP subnet: 10.123.0.12/32
+  IPv6 routing is disabled
+  Level1
+    No auth type and keychain
+    Auth check set
+  Level2
+    No auth type and keychain
+    Auth check set
+  Index: 0x0004, Local Circuit ID: 0x01, Circuit Type: L1
+  BFD IPv4 is locally disabled for Interface loopback1
+  BFD does not support AF IPv4
+  BFD IPv6 is locally disabled for Interface loopback1
+  BFD does not support AF IPv6
+  MTR is disabled
+  Passive level: level-2
+  Level      Metric
+  1               1
+  2               1
+  Topologies enabled:
+    L  MT  Metric  MetricCfg  Fwdng IPV4-MT  IPV4Cfg  IPV6-MT  IPV6Cfg
+    1  0        1       no   UP    UP       yes      DN       no
+    2  0        1       no   DN    DN       no       DN       no
+
+Ethernet1/1, Interface status: protocol-up/link-up/admin-up
+  IP address: 10.123.1.1, IP subnet: 10.123.1.0/31
+  IPv6 routing is disabled
+     Auth type:MD5
+    Auth keychain: ISIS
+    Auth check set
+  Index: 0x0001, Local Circuit ID: 0x01, Circuit Type: L1
+  BFD IPv4 is locally disabled for Interface Ethernet1/1
+  BFD IPv6 is locally disabled for Interface Ethernet1/1
+  MTR is disabled
+  Extended Local Circuit ID: 0x1A000000, P2P Circuit ID: 0000.0000.0000.00
+  Retx interval: 5, Retx throttle interval: 66 ms
+  LSP interval: 33 ms, MTU: 1500
+  MTU check OFF on P2P interface
+  P2P Adjs: 1, AdjsUp: 1, Priority 64
+  Hello Interval: 10, Multi: 3, Next IIH: 00:00:05
+  MT    Adjs   AdjsUp  Metric   CSNP  Next CSNP  Last LSP ID
+  1          1        1      40     60  00:00:54   ffff.ffff.ffff.ff-ff
+  2          0        0      40     60  Inactive   ffff.ffff.ffff.ff-ff
+  Topologies enabled:
+    L  MT  Metric  MetricCfg  Fwdng IPV4-MT  IPV4Cfg  IPV6-MT  IPV6Cfg
+    1  0        40      no   UP    UP       yes      DN       no
+    2  0        40      no   DN    DN       no       DN       no
+
+Ethernet1/2, Interface status: protocol-up/link-up/admin-up
+  IP address: 10.123.1.3, IP subnet: 10.123.1.2/31
+  IPv6 routing is disabled
+     Auth type:MD5
+    Auth keychain: ISIS
+    Auth check set
+  Index: 0x0002, Local Circuit ID: 0x01, Circuit Type: L1
+  BFD IPv4 is locally disabled for Interface Ethernet1/2
+  BFD IPv6 is locally disabled for Interface Ethernet1/2
+  MTR is disabled
+  Extended Local Circuit ID: 0x1A000200, P2P Circuit ID: 0000.0000.0000.00
+  Retx interval: 5, Retx throttle interval: 66 ms
+  LSP interval: 33 ms, MTU: 1500
+  MTU check OFF on P2P interface
+  P2P Adjs: 1, AdjsUp: 1, Priority 64
+  Hello Interval: 10, Multi: 3, Next IIH: 00:00:05
+  MT    Adjs   AdjsUp  Metric   CSNP  Next CSNP  Last LSP ID
+  1          1        1      40     60  00:00:07   ffff.ffff.ffff.ff-ff
+  2          0        0      40     60  Inactive   ffff.ffff.ffff.ff-ff
+  Topologies enabled:
+    L  MT  Metric  MetricCfg  Fwdng IPV4-MT  IPV4Cfg  IPV6-MT  IPV6Cfg
+    1  0        40      no   UP    UP       yes      DN       no
+    2  0        40      no   DN    DN       no       DN       no
+```
+Из результатов вывода команды видно, что интерфейсы в активном состоянии и на них используется аутентификация.
+
+3. Проверка ISIS процесса
+ ```sh
+ISIS process : UNDERLAY
+ Instance number :  1
+ UUID: 1090519320
+ Process ID 23857
+VRF: default
+  System ID : 0010.0123.0011  IS-Type : L1
+  SAP : 412  Queue Handle : 11
+  Maximum LSP MTU: 1492
+  Stateful HA enabled
+  Graceful Restart enabled. State: Inactive
+  Last graceful restart status : none
+  Start-Mode Complete
+  BFD IPv4 is globally disabled for ISIS process: UNDERLAY
+  BFD IPv6 is globally disabled for ISIS process: UNDERLAY
+  Topology-mode is base
+  Metric-style : advertise(wide), accept(narrow, wide)
+  Area address(es) :
+    49.1234
+  Process is up and running
+  VRF ID: 1
+  Stale routes during non-graceful controlled restart
+  Enable resolution of L3->L2 address for ISIS adjacency
+  SRTE: Not registered
+  OAM: Not registered
+  SR IPv4 is not configured and disabled for ISIS process: UNDERLAY
+  SR IPv6 is not configured and disabled for ISIS process: UNDERLAY
+ SRv6 is disabled for ISIS process: UNDERLAY
+  Interfaces supported by IS-IS :
+    loopback0
+    loopback1
+    Ethernet1/1
+    Ethernet1/2
+  Topology : 0
+  Address family IPv4 unicast :
+    Number of interface : 4
+    Distance : 115
+    Default-information not originated
+  Address family IPv6 unicast :
+    Number of interface : 0
+    Distance : 115
+    Default-information not originated
+  Topology : 2
+  Address family IPv4 unicast :
+    Number of interface : 0
+    Distance : 115
+    Default-information not originated
+  Address family IPv6 unicast :
+    Number of interface : 0
+    Distance : 115
+    Default-information not originated
+  Level1
+  No auth type and keychain
+  Auth check set
+  Level2
+  No auth type and keychain
+  Auth check set
+  L1 Next SPF: Inactive
+  L2 Next SPF: Inactive
+  Attached bits
+   MT-0 L-1: Att 0 Spf-att 0 Cfg 1 Adv-att 0
+   MT-0 L-2: Att 0 Spf-att 0 Cfg 1 Adv-att 0
+```
+
+4. Просмотр маршрутов ISIS.
+ ```sh
+Leaf-1# show ip route isis
+IP Route Table for VRF "default"
+'*' denotes best ucast next-hop
+'**' denotes best mcast next-hop
+'[x/y]' denotes [preference/metric]
+'%<string>' in via output denotes VRF <string>
+
+10.123.0.21/32, ubest/mbest: 2/0
+    *via 10.123.1.0, Eth1/1, [115/81], 00:11:00, isis-UNDERLAY, L1
+    *via 10.123.1.2, Eth1/2, [115/81], 00:07:40, isis-UNDERLAY, L1
+10.123.0.22/32, ubest/mbest: 2/0
+    *via 10.123.1.0, Eth1/1, [115/81], 00:11:00, isis-UNDERLAY, L1
+    *via 10.123.1.2, Eth1/2, [115/81], 00:07:40, isis-UNDERLAY, L1
+10.123.0.31/32, ubest/mbest: 2/0
+    *via 10.123.1.0, Eth1/1, [115/81], 00:11:01, isis-UNDERLAY, L1
+    *via 10.123.1.2, Eth1/2, [115/81], 00:07:40, isis-UNDERLAY, L1
+10.123.0.32/32, ubest/mbest: 2/0
+    *via 10.123.1.0, Eth1/1, [115/81], 00:11:01, isis-UNDERLAY, L1
+    *via 10.123.1.2, Eth1/2, [115/81], 00:07:40, isis-UNDERLAY, L1
+10.123.0.41/32, ubest/mbest: 1/0
+    *via 10.123.1.0, Eth1/1, [115/41], 00:11:05, isis-UNDERLAY, L1
+10.123.0.51/32, ubest/mbest: 1/0
+    *via 10.123.1.2, Eth1/2, [115/41], 00:07:26, isis-UNDERLAY, L1
+10.123.1.4/31, ubest/mbest: 1/0
+    *via 10.123.1.0, Eth1/1, [115/80], 00:11:05, isis-UNDERLAY, L1
+10.123.1.6/31, ubest/mbest: 1/0
+    *via 10.123.1.2, Eth1/2, [115/80], 00:07:40, isis-UNDERLAY, L1
+10.123.1.8/31, ubest/mbest: 1/0
+    *via 10.123.1.0, Eth1/1, [115/80], 00:11:05, isis-UNDERLAY, L1
+10.123.1.10/31, ubest/mbest: 1/0
+    *via 10.123.1.2, Eth1/2, [115/80], 00:07:40, isis-UNDERLAY, L1
+```
+
+Из маршрутной информации видно, что для коммутатора **_Leaf-1_** коммутаторы **_Leaf-2_** и **_Leaf-3_** достижимы через 2 коммутатора _Spine_ одновременно, то есть, у нас используется ECMP (балансировка трафика с равной стоимостью) из-за наличия "одинакового" пути.
 
 
 ### 2. Проверка доступности сетевых узлов.
