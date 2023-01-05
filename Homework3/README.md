@@ -21,32 +21,32 @@
 
 <summary> Базовая конфигурация VPCs </summary>
 
-Конфигурация VPCS **_"Client1"_**
+Конфигурация VPCS **_"Server-1"_**
 ```sh
-set pcname Client1
+set pcname Server-1
 ip 10.123.100.10 255.255.255.0 10.123.100.1
 save
 ```
 
-Конфигурация VPCS **_"Client2"_**
+Конфигурация VPCS **_"Server-2"_**
 ```sh
-set pcname Client2
+set pcname Server-2
 ip 10.123.100.11 255.255.255.0 10.123.100.1
 save
 ```
 
-Конфигурация VPCS **_"Client3"_**
+Конфигурация VPCS **_"Server-3"_**
 
 ```sh
-set pcname Client3
+set pcname Server-3
 ip 10.123.100.12 255.255.255.0 10.123.100.1
 save
 ```
 
-Конфигурация VPCS **_"Client4"_**
+Конфигурация VPCS **_"Server-4"_**
 
 ```sh
-set pcname Client4
+set pcname Server-4
 ip 10.123.100.13 255.255.255.0 10.123.100.1
 save
 ```
