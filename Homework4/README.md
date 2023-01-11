@@ -292,3 +292,17 @@ boot nxos bootflash:nxos.9.3.10.bin
 cli alias name wr copy running-config startup-config
 ```
 </details>
+
+<details> 
+
+<summary>Полезные команды </summary>
+
+```
+show bgp all
+show bgp ipv4 unicast
+show bgp ipv4 unicast neighbors
+show bgp ipv4 unicast summary
+show ip route bgp 
+```
+
+</details>
