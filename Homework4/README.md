@@ -56,6 +56,7 @@ save
 ```
 </details>
 
+<details> 
 <summary> Базовая конфигурация коммутаторов NX-OS </summary>
 
 Конфигурация коммутатора **_Leaf-1_**
