@@ -38,7 +38,7 @@ set pcname Server-2
 ip 10.123.100.11 255.255.255.0 10.123.100.1
 save
 ```
-
+  
 Конфигурация VPCS **_"Server-3"_**
 
 ```sh
@@ -53,5 +53,241 @@ save
 set pcname Server-4
 ip 10.123.100.13 255.255.255.0 10.123.100.1
 save
+```
+</details>
+
+<summary> Базовая конфигурация коммутаторов NX-OS </summary>
+
+Конфигурация коммутатора **_Leaf-1_**
+  ```sh
+hostname Leaf-1
+
+feature interface-vlan
+
+no ip domain-lookup
+ip domain-name dc.lab
+
+vlan 100
+  name Servers
+  
+interface Vlan100
+  description GW_for_Servers->VLAN100
+  no shutdown
+  no ip redirects
+  ip address 10.123.100.1/24
+  
+interface Ethernet1/1
+  description to_Spine-1
+  no switchport
+  no ip redirects
+  ip address 10.123.1.1/31
+  no shutdown
+
+interface Ethernet1/2
+  description to_Spine-2
+  no switchport
+  no ip redirects
+  ip address 10.123.1.3/31
+  no shutdown
+  
+  interface ethernet 1/7
+  description VPCs
+  switchport
+  switchport mode access
+  switchport access vlan 100
+
+interface loopback0
+  description RID
+  ip address 10.123.0.11/32
+
+interface loopback1
+  description VTEP
+  ip address 10.123.0.12/32
+  
+boot nxos bootflash:nxos.9.3.10.bin
+
+cli alias name wr copy running-config startup-config
+```
+
+Конфигурация коммутатора **_Leaf-2_**
+  ```sh
+hostname Leaf-2
+
+feature interface-vlan
+
+no ip domain-lookup
+ip domain-name dc.lab
+
+vlan 100
+  name Servers
+  
+interface Vlan100
+  description GW_for_Servers->VLAN100
+  no shutdown
+  no ip redirects
+  ip address 10.123.100.1/24
+  
+interface Ethernet1/1
+  description to_Spine-1
+  no switchport
+  no ip redirects
+  ip address 10.123.1.5/31
+  no shutdown
+
+interface Ethernet1/2
+  description to_Spine-2
+  no switchport
+  no ip redirects
+  ip address 10.123.1.7/31
+  no shutdown
+  
+  interface ethernet 1/7
+  description Server-2
+  switchport
+  switchport mode access
+  switchport access vlan 100
+
+interface loopback0
+  description RID
+  ip address 10.123.0.21/32
+
+interface loopback1
+  description VTEP
+  ip address 10.123.0.22/32
+  
+boot nxos bootflash:nxos.9.3.10.bin
+
+cli alias name wr copy running-config startup-config
+```
+
+Конфигурация коммутатора **_Leaf-3_**
+  ```sh
+hostname Leaf-3
+
+feature interface-vlan
+
+no ip domain-lookup
+ip domain-name dc.lab
+
+vlan 100
+  name Servers
+  
+interface Vlan100
+  description GW_for_Servers->VLAN100
+  no shutdown
+  no ip redirects
+  ip address 10.123.100.1/24
+  
+interface Ethernet1/1
+  description to_Spine-1
+  no switchport
+  no ip redirects
+  ip address 10.123.1.9/31
+  no shutdown
+
+interface Ethernet1/2
+  description to_Spine-2
+  no switchport
+  no ip redirects
+  ip address 10.123.1.11/31
+  no shutdown
+  
+interface ethernet 1/6-7
+  description Server-3
+  switchport
+  switchport mode access
+  switchport access vlan 100
+  
+interface ethernet 1/7
+  description Server-4
+  switchport
+  switchport mode access
+  switchport access vlan 100
+
+interface loopback0
+  description RID
+  ip address 10.123.0.31/32
+
+interface loopback1
+  description VTEP
+  ip address 10.123.0.32/32
+  
+boot nxos bootflash:nxos.9.3.10.bin
+
+cli alias name wr copy running-config startup-config
+```
+
+Конфигурация коммутатора **_Spine-1_**  
+```sh
+hostname Spine-1
+
+no ip domain-lookup
+ip domain-name dc.lab
+  
+interface Ethernet1/1
+  description to_Leaf-1
+  no switchport
+  no ip redirects
+  ip address 10.123.1.0/31
+  no shutdown
+
+interface Ethernet1/2
+  description to_Leaf-2
+  no switchport
+  no ip redirects
+  ip address 10.123.1.4/31
+  no shutdown
+
+interface Ethernet1/3
+  description to_Leaf-3
+  no switchport
+  no ip redirects
+  ip address 10.123.1.8/31
+  no shutdown
+
+interface loopback0
+  description RID
+  ip address 10.123.0.41/32
+
+boot nxos bootflash:nxos.9.3.10.bin
+  
+cli alias name wr copy running-config startup-config
+```
+
+Конфигурация коммутатора **_Spine-2_**
+ ```sh
+hostname Spine-2
+
+no ip domain-lookup
+ip domain-name dc.lab
+  
+interface Ethernet1/1
+  description to_Leaf-1
+  no switchport
+  no ip redirects
+  ip address 10.123.1.2/31
+  no shutdown
+
+interface Ethernet1/2
+  description to_Leaf-2
+  no switchport
+  no ip redirects
+  ip address 10.123.1.6/31
+  no shutdown
+
+interface Ethernet1/3
+  description to_Leaf-3
+  no switchport
+  no ip redirects
+  ip address 10.123.1.10/31
+  no shutdown
+
+interface loopback0
+  description RID
+  ip address 10.123.0.51/32
+
+boot nxos bootflash:nxos.9.3.10.bin  
+  
+cli alias name wr copy running-config startup-config
 ```
 </details>
