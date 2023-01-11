@@ -296,10 +296,11 @@ cli alias name wr copy running-config startup-config
 <summary>Полезные команды </summary>
 
 ```
-show isis
-show isis interface
-show ip route
-show isis adjacency 
+show bgp all
+show bgp ipv4 unicast
+show bgp ipv4 unicast neighbors
+show bgp ipv4 unicast summary
+show ip route bgp 
 ```
 
 </details>
