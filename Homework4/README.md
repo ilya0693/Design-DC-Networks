@@ -368,50 +368,51 @@ _Примечание:_ BFD на стенде не поддерживается,
 
 Включаем функционал BGP
 ```sh
-feature isis
+feature bgp
 ```
 
-Настраиваем цепочку ключей, которая будет использоваться для аутентификации ISIS сессий.
+Создаем route-map для анонсов connected маршрутов. В нашем случае анонсируем только сеть интерфейса Loopback 1.
 ```sh
-key chain ISIS
-  key 0
-    key-string 7 070c285f4d06
+route-map REDISTRIBUTE_CONNECTED permit 10
+  match interface loopback1
 ```
 
-Настраиваем ISIS Instance и NET ID. Также глобально задаем уровень взаимодействия между коммутаторами NX-OS.
+Создаем BGP Instance в AS 4200100011. В режиме конфигурации BGP настраиваем следующие параметры:
+1. Router-ID;
+2. Reconnect интервал для быстрой конвергенции;
+3. Учитываем только длину пути (нужно для балансировки ECMP);
+4. В адресном семействе IPv4 анонсируем directly connected маршруты (применяем созданный нами route-map с помощью редистрибьюции);
+5. Включаем multipath для балансировки исходящего трафика по ECMP.
 ```sh
-router isis UNDERLAY
-  net 49.1234.0010.0123.0011.00
-  is-type level-1
+router bgp 4200100011
+  router-id 10.123.0.11
+  bestpath as-path multipath-relax
+  reconnect-interval 12
+  address-family ipv4 unicast
+    redistribute direct route-map REDISTRIBUTE_CONNECTED
+    maximum-paths 64
 ```
 
-NET ID обозначает следующее:
-1. AFI (Authority and Format Identifier) - 49.  AFI является частью номера области и указывает тип адреса (у нас приватный, поэтому он равен 49).
-2. Area ID - 1234. Это номер области (Area ID), которой принадлежит коммутатор.
-3. System ID - 0010.0123.0011. Это идентификатор, в нашем случае, коммутатора Leaf-1. У каждого коммутатора в топологии он должен быть уникальным, поскольку именно по System ID коммутатора "узнают" друг друга при осознании топологии.
-4. Selector - 00. Значение Selector, равное 00, обозначало в NET адресах, что адрес принадлежит самому маршрутизатору. В большинстве случаев он всегда равен нулю.
-
-Далее в режиме конфигурации физических интерфейсов настраиваем:
-1. Ассоциацию интерфейсов с ISIS Instance. 
-2. Аутентификацию.
-3. Интерфейс в режим point-to-point, для "упрощенного" согласования соседства и исключения выбора DIS.
-
+Далее в режиме конфигурации BGP настраиваем template, который будет применяться к BGP соседям. В данном template настраиваются:
+1. Автономная система BGP соседа (remote-as);
+2. Keepalive и Hold таймеры (делаем их более агрессивными для быстрой сходимости BGP);
+3. Включаем адресное семейство IPv4 unicast.
 ```sh
-interface Ethernet1/1-2
-  isis authentication-type md5 level-1
-  isis authentication key-chain ISIS
-  medium p2p
-  isis authentication-check level-1
-  ip router isis UNDERLAY
+  template peer Spines
+    remote-as 4200100000
+    timers 3 9
+    address-family ipv4 unicast
 ```
 
-В режиме конфигурации Loopback интерфейсов ассоциируем интерфейсы с ISIS Instance.
+Так как AS у всех Spine коммутаторов одинаковая, созданный template будет применяться ко всем BGP соседям коммутатора Leaf. Ниже представлена конфигурация BGP соседей (настраивается в режиме конфигурации BGP).
 ```sh
-interface loopback0
-  ip router isis UNDERLAY
-
-interface loopback1
-  ip router isis UNDERLAY
+  neighbor 10.123.1.0
+    inherit peer Spines
+    description Spine-1
+  neighbor 10.123.1.2
+    inherit peer Spines
+    description Spine-2
 ```
 
-На остальных Leaf коммутаторах ISIS настраивается идентичным образом. С конфигурацией ISIS можно ознакомиться ниже.
+На остальных коммутаторах Nexus eBGP настраивается идентичным образом. С конфигурацией eBGP можно ознакомиться ниже.
+
