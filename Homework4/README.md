@@ -193,7 +193,7 @@ interface Ethernet1/2
   ip address 10.123.1.11/31
   no shutdown
   
-interface ethernet 1/6-7
+interface ethernet 1/6
   description Server-3
   switchport
   switchport mode access
