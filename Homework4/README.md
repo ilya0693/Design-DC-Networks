@@ -416,3 +416,114 @@ router bgp 4200100011
 
 На остальных коммутаторах Nexus eBGP настраивается идентичным образом. С конфигурацией eBGP можно ознакомиться ниже.
 
+<details> 
+<summary> Конфигурация коммутатора <em>"Leaf-2"</em> </summary>
+
+```sh
+feature bgp
+
+route-map REDISTRIBUTE_CONNECTED permit 10
+  match interface loopback1
+
+router bgp 4200100022
+  router-id 10.123.0.21
+  bestpath as-path multipath-relax
+  reconnect-interval 12
+  address-family ipv4 unicast
+    redistribute direct route-map REDISTRIBUTE_CONNECTED
+    maximum-paths 64
+  template peer Spines
+    remote-as 4200100000
+    timers 3 9
+    address-family ipv4 unicast
+  neighbor 10.123.1.4
+    inherit peer Spines
+    description Spine-1
+  neighbor 10.123.1.6
+    inherit peer Spines
+    description Spine-2
+```
+</details> 
+
+<details> 
+<summary> Конфигурация коммутатора <em>"Leaf-3"</em> </summary>
+
+```sh
+feature bgp
+
+route-map REDISTRIBUTE_CONNECTED permit 10
+  match interface loopback1
+
+router bgp 4200100033
+  router-id 10.123.0.31
+  bestpath as-path multipath-relax
+  reconnect-interval 12
+  address-family ipv4 unicast
+    redistribute direct route-map REDISTRIBUTE_CONNECTED
+    maximum-paths 64
+  template peer Spines
+    remote-as 4200100000
+    timers 3 9
+    address-family ipv4 unicast
+  neighbor 10.123.1.8
+    inherit peer Spines
+    description Spine-1
+  neighbor 10.123.1.10
+    inherit peer Spines
+    description Spine-2
+```
+</details> 
+
+Следует отметить, что конфигурация BGP на Spine коммутаторах незначительно отличаются от конфигурации BGP на коммутаторах Leaf. Отличие заключается в том, что Spine не анонсирует никаких маршрутов (кроме тех, что принимает от Leaf) и не имеет template. Пример конфигурации ниже.
+
+<details> 
+<summary> Конфигурация коммутатора <em>"Spine-1"</em> </summary>
+
+```sh
+feature bgp
+
+router bgp 4200100000
+  router-id 10.123.0.41
+  bestpath as-path multipath-relax
+  address-family ipv4 unicast
+    maximum-paths 64
+  neighbor 10.123.1.1
+    remote-as 4200100011
+    timers 3 9
+    address-family ipv4 unicast
+  neighbor 10.123.1.5
+    remote-as 4200100022
+    timers 3 9
+    address-family ipv4 unicast
+  neighbor 10.123.1.9
+    remote-as 4200100033
+    timers 3 9
+    address-family ipv4 unicast
+```
+</details> 
+
+<details> 
+<summary> Конфигурация коммутатора <em>"Spine-2"</em> </summary>
+
+```sh
+router bgp 4200100000
+  router-id 10.123.0.51
+  bestpath as-path multipath-relax
+  address-family ipv4 unicast
+    maximum-paths 64
+  neighbor 10.123.1.3
+    remote-as 4200100011
+    timers 3 9
+    address-family ipv4 unicast
+  neighbor 10.123.1.7
+    remote-as 4200100022
+    timers 3 9
+    address-family ipv4 unicast
+  neighbor 10.123.1.11
+    remote-as 4200100033
+    timers 3 9
+    address-family ipv4 unicast
+```
+</details> 
+
+##### 1.2. Проверка работоспособности протокола BGP
