@@ -298,7 +298,6 @@ cli alias name wr copy running-config startup-config
 <summary>Полезные команды </summary>
 
 ```
-show bgp all
 show bgp ipv4 unicast
 show bgp ipv4 unicast neighbors
 show bgp ipv4 unicast summary
@@ -527,3 +526,248 @@ router bgp 4200100000
 </details> 
 
 ##### 1.2. Проверка работоспособности протокола BGP
+После настройки маршрутизации по протоколу eBGP проверим, что у нас установилось соседство и коммутаторы обмениваются маршрутной информацией. В качестве примера, проверим работоспособность маршрутизации eBGP со стороны коммутатора **_Leaf-1_**
+
+1. Проверка общей (суммарной) информации об установлении BGP соседства.
+ ```sh
+Leaf-1# show bgp ipv4 unicast summary
+BGP summary information for VRF default, address family IPv4 Unicast
+BGP router identifier 10.123.0.11, local AS number 4200100011
+BGP table version is 8, IPv4 Unicast config peers 2, capable peers 2
+3 network entries and 5 paths using 972 bytes of memory
+BGP attribute entries [3/516], BGP AS path entries [2/20]
+BGP community entries [0/0], BGP clusterlist entries [0/0]
+
+Neighbor        V    AS MsgRcvd MsgSent   TblVer  InQ OutQ Up/Down  State/PfxRcd
+10.123.1.0      4 4200100000
+                            813     821        8    0    0 00:40:23 2
+10.123.1.2      4 4200100000
+                            680     685        8    0    0 00:33:46 2
+```
+Как мы видим, BGP соседство установлено и они обмениваются 2мя префиксами/маршрутами.
+
+2. Подробная информация об установлении BGP соседства
+ ```sh
+Leaf-1# show bgp ipv4 unicast neighbors
+BGP neighbor is 10.123.1.0, remote AS 4200100000, ebgp link, Peer index 3
+  Inherits peer configuration from peer-template Spines
+  Description: Spine-1
+  BGP version 4, remote router ID 10.123.0.41
+  Neighbor previous state = OpenConfirm
+  BGP state = Established, up for 00:41:57
+  Neighbor vrf: default
+  Peer is directly attached, interface Ethernet1/1
+  Last read 0.740462, hold time = 9, keepalive interval is 3 seconds
+  Last written 0.912985, keepalive timer expiry due 00:00:02
+  Received 844 messages, 0 notifications, 0 bytes in queue
+  Sent 852 messages, 0 notifications, 0(0) bytes in queue
+  Enhanced error processing: On
+    0 discarded attributes
+  Connections established 1, dropped 0
+  Last reset by us 00:42:14, due to session closed
+  Last error length sent: 0
+  Reset error value sent: 0
+  Reset error sent major: 104 minor: 0
+  Notification data sent:
+  Last reset by peer never, due to No error
+  Last error length received: 0
+  Reset error value received 0
+  Reset error received major: 0 minor: 0
+  Notification data received:
+
+  Neighbor capabilities:
+  Dynamic capability: advertised (mp, refresh, gr) received (mp, refresh, gr)
+  Dynamic capability (old): advertised received
+  Route refresh capability (new): advertised received
+  Route refresh capability (old): advertised received
+  4-Byte AS capability: advertised received
+  Address family IPv4 Unicast: advertised received
+  Graceful Restart capability: advertised received
+
+  Graceful Restart Parameters:
+  Address families advertised to peer:
+    IPv4 Unicast
+  Address families received from peer:
+    IPv4 Unicast
+  Forwarding state preserved by peer for:
+  Restart time advertised to peer: 120 seconds
+  Stale time for routes advertised by peer: 300 seconds
+  Restart time advertised by peer: 120 seconds
+  Extended Next Hop Encoding Capability: advertised received
+  Receive IPv6 next hop encoding Capability for AF:
+    IPv4 Unicast  VPNv4 Unicast
+
+  Message statistics:
+                              Sent               Rcvd
+  Opens:                        10                  1
+  Notifications:                 0                  0
+  Updates:                       2                  3
+  Keepalives:                  839                838
+  Route Refresh:                 0                  0
+  Capability:                    2                  2
+  Total:                       852                844
+  Total bytes:               16070              16106
+  Bytes in queue:                0                  0
+
+  For address family: IPv4 Unicast
+  BGP table version 8, neighbor version 8
+  2 accepted prefixes (2 paths), consuming 480 bytes of memory
+  0 received prefixes treated as withdrawn
+  1 sent prefixes (1 paths)
+  Last End-of-RIB received 00:00:01 after session start
+  Last End-of-RIB sent 00:00:01 after session start
+  First convergence 00:00:01 after session start with 1 routes sent
+
+  Local host: 10.123.1.1, Local port: 26353
+  Foreign host: 10.123.1.0, Foreign port: 179
+  fd = 67
+
+BGP neighbor is 10.123.1.2, remote AS 4200100000, ebgp link, Peer index 4
+  Inherits peer configuration from peer-template Spines
+  Description: Spine-2
+  BGP version 4, remote router ID 10.123.0.51
+  Neighbor previous state = OpenConfirm
+  BGP state = Established, up for 00:35:20
+  Neighbor vrf: default
+  Peer is directly attached, interface Ethernet1/2
+  Last read 00:00:02, hold time = 9, keepalive interval is 3 seconds
+  Last written 0.879728, keepalive timer expiry due 00:00:02
+  Received 711 messages, 0 notifications, 0 bytes in queue
+  Sent 716 messages, 0 notifications, 0(0) bytes in queue
+  Enhanced error processing: On
+    0 discarded attributes
+  Connections established 1, dropped 0
+  Last reset by us 00:35:33, due to session closed
+  Last error length sent: 0
+  Reset error value sent: 0
+  Reset error sent major: 104 minor: 0
+  Notification data sent:
+  Last reset by peer never, due to No error
+  Last error length received: 0
+  Reset error value received 0
+  Reset error received major: 0 minor: 0
+  Notification data received:
+
+  Neighbor capabilities:
+  Dynamic capability: advertised (mp, refresh, gr) received (mp, refresh, gr)
+  Dynamic capability (old): advertised received
+  Route refresh capability (new): advertised received
+  Route refresh capability (old): advertised received
+  4-Byte AS capability: advertised received
+  Address family IPv4 Unicast: advertised received
+  Graceful Restart capability: advertised received
+
+  Graceful Restart Parameters:
+  Address families advertised to peer:
+    IPv4 Unicast
+  Address families received from peer:
+    IPv4 Unicast
+  Forwarding state preserved by peer for:
+  Restart time advertised to peer: 120 seconds
+  Stale time for routes advertised by peer: 300 seconds
+  Restart time advertised by peer: 120 seconds
+  Extended Next Hop Encoding Capability: advertised received
+  Receive IPv6 next hop encoding Capability for AF:
+    IPv4 Unicast  VPNv4 Unicast
+
+  Message statistics:
+                              Sent               Rcvd
+  Opens:                         6                  1
+  Notifications:                 0                  0
+  Updates:                       2                  3
+  Keepalives:                  707                705
+  Route Refresh:                 0                  0
+  Capability:                    2                  2
+  Total:                       716                711
+  Total bytes:               13562              13579
+  Bytes in queue:                0                  0
+
+  For address family: IPv4 Unicast
+  BGP table version 8, neighbor version 8
+  2 accepted prefixes (2 paths), consuming 480 bytes of memory
+  0 received prefixes treated as withdrawn
+  1 sent prefixes (1 paths)
+  Last End-of-RIB received 00:00:01 after session start
+  Last End-of-RIB sent 00:00:01 after session start
+  First convergence 00:00:01 after session start with 1 routes sent
+
+  Local host: 10.123.1.3, Local port: 179
+  Foreign host: 10.123.1.2, Foreign port: 33535
+  fd = 68
+```
+3. Просмотр таблицы BGP адресного семейства IPv4
+ ```sh
+Leaf-1# show bgp ipv4 unicast
+BGP routing table information for VRF default, address family IPv4 Unicast
+BGP table version is 8, Local Router ID is 10.123.0.11
+Status: s-suppressed, x-deleted, S-stale, d-dampened, h-history, *-valid, >-best
+Path type: i-internal, e-external, c-confed, l-local, a-aggregate, r-redist, I-i
+njected
+Origin codes: i - IGP, e - EGP, ? - incomplete, | - multipath, & - backup, 2 - b
+est2
+
+   Network            Next Hop            Metric     LocPrf     Weight Path
+*>r10.123.0.12/32     0.0.0.0                  0        100      32768 ?
+*|e10.123.0.22/32     10.123.1.2                                     0 420010000
+0 4200100022 ?
+*>e                   10.123.1.0                                     0 420010000
+0 4200100022 ?
+*|e10.123.0.32/32     10.123.1.2                                     0 420010000
+0 4200100033 ?
+*>e                   10.123.1.0                                     0 420010000
+0 4200100033 ?
+
+```
+
+4. Просмотр маршрутов BGP
+ ```sh
+Leaf-1# show ip route bgp
+IP Route Table for VRF "default"
+'*' denotes best ucast next-hop
+'**' denotes best mcast next-hop
+'[x/y]' denotes [preference/metric]
+'%<string>' in via output denotes VRF <string>
+
+10.123.0.22/32, ubest/mbest: 2/0
+    *via 10.123.1.0, [20/0], 00:45:34, bgp-4200100011, external, tag 4200100000
+    *via 10.123.1.2, [20/0], 00:38:12, bgp-4200100011, external, tag 4200100000
+10.123.0.32/32, ubest/mbest: 2/0
+    *via 10.123.1.0, [20/0], 00:42:59, bgp-4200100011, external, tag 4200100000
+    *via 10.123.1.2, [20/0], 00:37:36, bgp-4200100011, external, tag 4200100000
+```
+
+Из таблицы BGP и таблицы маршрутизации видно, что Loopback адреса удаленных Leaf коммутаторов доступны по двум равнозначным путям, а значит трафик будет балансироваться.
+
+### 2. Проверка доступности сетевых узлов.
+После настройки маршрутизации eBGP проверим, что коммутаторы "видят" друг друга. Для проверки доступности сетевых узлов будем использовать протокол ICMP, а именно команду ping и traceroute, запускаемые на коммутаторах ЦОД. Для упрощения тестирования целесообразно проверять доступность Loopback интерфейсов, так как доступность Loopback интерфейсов также подтверждает доступность физических интерфейсов. Ниже представлен пример доступности интерфейса Loopback1, который настроен на коммутаторе Leaf-3. Проверка проводилась с коммутатора Leaf-1.
+
+```sh
+Leaf-1# ping 10.123.0.32 source 10.123.0.12
+PING 10.123.0.32 (10.123.0.32) from 10.123.0.12: 56 data bytes
+64 bytes from 10.123.0.32: icmp_seq=0 ttl=253 time=150.657 ms
+64 bytes from 10.123.0.32: icmp_seq=1 ttl=253 time=20.501 ms
+64 bytes from 10.123.0.32: icmp_seq=2 ttl=253 time=15.829 ms
+64 bytes from 10.123.0.32: icmp_seq=3 ttl=253 time=15.874 ms
+64 bytes from 10.123.0.32: icmp_seq=4 ttl=253 time=21.052 ms
+
+--- 10.123.0.32 ping statistics ---
+5 packets transmitted, 5 packets received, 0.00% packet loss
+round-trip min/avg/max = 15.829/44.782/150.657 ms
+
+Leaf-1# traceroute 10.123.0.32 source 10.123.0.12
+traceroute to 10.123.0.32 (10.123.0.32) from 10.123.0.12 (10.123.0.12), 30 hops max, 40 byte packets
+ 1  10.123.1.2 (10.123.1.2)  17.668 ms  13.11 ms  8.408 ms
+ 2  10.123.0.32 (10.123.0.32) (AS 4200100033)  32.229 ms  19.336 ms  18.743 ms
+```
+
+Результаты тестирования приведены в таблице 1.
+
+Таблица 1 - Результаты тестирования
+|Коммутатор источник |IP-адрес источника     |Коммутатор назначения |IP-адрес назначения|Результат тестирования|
+|--------------------|-----------------------|----------------------|-------------------|----------------------|
+|Leaf-1              |10.123.0.12            |Leaf-2                |10.123.0.22        |Успешно               |
+|Leaf-1              |10.123.0.12            |Leaf-3                |10.123.0.32        |Успешно               |
+
+_Примечание_: В таблице приведены результаты тестирования только с коммутатора Leaf-1. С остальных Leaf коммутаторов результаты также положительные.
+
+С полной версией конфигурации каждого сетевого оборудования можно ознакомиться [здесь](https://github.com/ilya0693/Design-DC-Networks/tree/main/Homework3/Configs).
