@@ -58,12 +58,13 @@ save
 </details>
 
 <details> 
-<summary> Базовая конфигурация коммутаторов NX-OS </summary>
+<summary> Начальная конфигурация коммутаторов NX-OS (включая Underlay маршрутизацию) </summary>
 
 Конфигурация коммутатора **_Leaf-1_**
   ```sh
 hostname Leaf-1
 
+feature bgp
 feature interface-vlan
 
 no ip domain-lookup
@@ -71,6 +72,9 @@ ip domain-name dc.lab
 
 vlan 100
   name Servers
+  
+route-map REDISTRIBUTE_CONNECTED permit 10
+  match interface loopback1
   
 interface Vlan100
   description GW_for_Servers->VLAN100
@@ -93,7 +97,7 @@ interface Ethernet1/2
   no shutdown
   
   interface ethernet 1/7
-  description VPCs
+  description Server-1
   switchport
   switchport mode access
   switchport access vlan 100
@@ -109,12 +113,31 @@ interface loopback1
 boot nxos bootflash:nxos.9.3.10.bin
 
 cli alias name wr copy running-config startup-config
+  
+router bgp 4200100011
+  router-id 10.123.0.11
+  bestpath as-path multipath-relax
+  reconnect-interval 12
+  address-family ipv4 unicast
+    redistribute direct route-map REDISTRIBUTE_CONNECTED
+    maximum-paths 64
+  template peer Spines
+    remote-as 4200100000
+    timers 3 9
+    address-family ipv4 unicast
+  neighbor 10.123.1.0
+    inherit peer Spines
+    description Spine-1
+  neighbor 10.123.1.2
+    inherit peer Spines
+    description Spine-2
 ```
 
 Конфигурация коммутатора **_Leaf-2_**
   ```sh
 hostname Leaf-2
 
+feature bgp
 feature interface-vlan
 
 no ip domain-lookup
@@ -122,6 +145,9 @@ ip domain-name dc.lab
 
 vlan 100
   name Servers
+
+route-map REDISTRIBUTE_CONNECTED permit 10
+  match interface loopback1
   
 interface Vlan100
   description GW_for_Servers->VLAN100
@@ -160,12 +186,31 @@ interface loopback1
 boot nxos bootflash:nxos.9.3.10.bin
 
 cli alias name wr copy running-config startup-config
+  
+router bgp 4200100022
+  router-id 10.123.0.21
+  bestpath as-path multipath-relax
+  reconnect-interval 12
+  address-family ipv4 unicast
+    redistribute direct route-map REDISTRIBUTE_CONNECTED
+    maximum-paths 64
+  template peer Spines
+    remote-as 4200100000
+    timers 3 9
+    address-family ipv4 unicast
+  neighbor 10.123.1.4
+    inherit peer Spines
+    description Spine-1
+  neighbor 10.123.1.6
+    inherit peer Spines
+    description Spine-2
 ```
 
 Конфигурация коммутатора **_Leaf-3_**
   ```sh
 hostname Leaf-3
 
+feature bgp
 feature interface-vlan
 
 no ip domain-lookup
@@ -174,6 +219,9 @@ ip domain-name dc.lab
 vlan 100
   name Servers
   
+route-map REDISTRIBUTE_CONNECTED permit 10
+  match interface loopback1  
+
 interface Vlan100
   description GW_for_Servers->VLAN100
   no shutdown
@@ -217,11 +265,31 @@ interface loopback1
 boot nxos bootflash:nxos.9.3.10.bin
 
 cli alias name wr copy running-config startup-config
+  
+router bgp 4200100033
+  router-id 10.123.0.31
+  bestpath as-path multipath-relax
+  reconnect-interval 12
+  address-family ipv4 unicast
+    redistribute direct route-map REDISTRIBUTE_CONNECTED
+    maximum-paths 64
+  template peer Spines
+    remote-as 4200100000
+    timers 3 9
+    address-family ipv4 unicast
+  neighbor 10.123.1.8
+    inherit peer Spines
+    description Spine-1
+  neighbor 10.123.1.10
+    inherit peer Spines
+    description Spine-2
 ```
 
 Конфигурация коммутатора **_Spine-1_**  
 ```sh
 hostname Spine-1
+  
+feature bgp
 
 no ip domain-lookup
 ip domain-name dc.lab
@@ -254,11 +322,26 @@ interface loopback0
 boot nxos bootflash:nxos.9.3.10.bin
   
 cli alias name wr copy running-config startup-config
+  
+ip as-path access-list LEAFS_AS seq 10 permit "^42001000[1-9]{2}$"
+  
+route-map LEAFS_AS permit 10
+  match as-path LEAFS_AS
+  
+router bgp 4200100000
+  router-id 10.123.0.41
+  bestpath as-path multipath-relax
+  address-family ipv4 unicast
+    maximum-paths 64
+  neighbor 10.123.1.0/24 remote-as route-map LEAFS_AS
+    address-family ipv4 unicast
 ```
 
 Конфигурация коммутатора **_Spine-2_**
  ```sh
 hostname Spine-2
+  
+feature bgp
 
 no ip domain-lookup
 ip domain-name dc.lab
@@ -291,6 +374,19 @@ interface loopback0
 boot nxos bootflash:nxos.9.3.10.bin  
   
 cli alias name wr copy running-config startup-config
+  
+ip as-path access-list LEAFS_AS seq 10 permit "^42001000[1-9]{2}$"
+  
+route-map LEAFS_AS permit 10
+  match as-path LEAFS_AS
+  
+router bgp 4200100000
+  router-id 10.123.0.51
+  bestpath as-path multipath-relax
+  address-family ipv4 unicast
+    maximum-paths 64
+  neighbor 10.123.1.0/24 remote-as route-map LEAFS_AS
+    address-family ipv4 unicast
 ```
 </details>
 
@@ -299,45 +395,34 @@ cli alias name wr copy running-config startup-config
 <summary>Полезные команды </summary>
 
 ```
-show bgp ipv4 unicast
-show bgp ipv4 unicast neighbors
-show bgp ipv4 unicast summary
-show ip route bgp 
+show nve peers
+show nve vni
+show ip arp suppression-cache detail
+show vxlan interface
+show bgp l2vpn evpn summary
+show bgp l2vpn evpn
+show l2route evpn mac all
+show l2route evpn mac-ip all
 ```
 
 </details>
 
 <details> 
 
-<summary> Описание протокола </summary>
+<summary> Терминология используемых технологий/протоколов </summary>
 
-#### BGP (Border Gateway Protocol)
-
-BGP — это основной протокол динамической маршрутизации, который используется в Интернете.
-
-Маршрутизаторы, использующие протокол BGP, обмениваются информацией о доступности сетей. Вместе с информацией о сетях передаются различные атрибуты этих сетей, с помощью которых BGP выбирает лучший маршрут и настраиваются политики маршрутизации. Один из основных атрибутов, который передается с информацией о маршруте — это список автономных систем, через которые прошла эта информация. Эта информация позволяет BGP определять где находится сеть относительно автономных систем, исключать петли маршрутизации, а также может быть использована при настройке политик. Маршрутизация осуществляется пошагово от одной автономной системы к другой. Все политики BGP настраиваются, в основном, по отношению к внешним/соседним автономным системам. То есть, описываются правила взаимодействия с ними.
+EVPN — это расширение BGP, которое позволяет сети передавать информацию о доступности конечного устройства, такую как MAC-адреса уровня 2 и IP-адреса уровня 3. Эта технология плоскости управления использует MP-BGP для распределения MAC-адресов и IP-адресов конечных устройств, где MAC-адреса рассматриваются как маршруты. EVPN позволяет устройствам действовать в качестве VTEP для обмена информацией между собой о доступности своих конечных устройств.
   
-BGP это path-vector протокол со следующими общими характеристиками:
-  * Использует TCP для передачи данных, это обеспечивает надежную доставку обновлений протокола (порт 179)
-  * Отправляет обновления только после изменений в сети (нет периодических обновлений)
-  * Периодически отправляет keepalive-сообщения для проверки TCP-соединения
-  *Метрика протокола называется path vector или атрибуты (attributes)
+VxLAN — технология инкапсуляции L2 фреймов в IP пакеты (UDP протокол). Технология стандартизирована в RFC7348. VXLAN предоставляет следующие возможности:
+–	24 бит VNID (более 16 млн уникальных ID);
+–	Передача L2 трафика через L3 сети (MAC in UDP);
+–	Совместно с EVPN, BGP обеспечивается целевая доставка L2 фреймов получателю: минимизируется количество широковещательных фреймов через WAN каналы связи (а также между отдельными Leaf коммутаторами в одном ЦОДе);
+–	Если L3 Underlay сеть обеспечивает балансировку между несколькими WAN каналами связи, то VXLAN (аналогично любому другому UDP трафику) может использовать возможности балансировки трафика для обеспечения равномерной нагрузки каналов связи;
+–	Использует один порт UDP/4789 для входящих пакетов (для более равномерной балансировки инкапсулированного трафика транспортная сеть [Underlay] должна обеспечивать балансировку по UDP порту источника, назначения).
 
-Различают следующие виды BGP:
-  * Внутренний BGP (Internal BGP, iBGP) — BGP работающий внутри автономной системы. iBGP-соседи не обязательно должны быть непосредственно соединены.
-  * Внешний BGP (External BGP, eBGP) — BGP работающий между автономными системами. По умолчанию, eBGP-соседи должны быть непосредственно соединены.
-  
-Для того чтобы установить отношения соседства, в BGP надо настроить вручную каждого соседа.
 
-Когда указывается сосед локального маршрутизатора, обязательно указывается автономная система соседа. По этой информации BGP определяет тип соседа:
- * Внутренний BGP сосед (iBGP-сосед) — сосед, который находится в той же автономной системе, что и локальный маршрутизатор. iBGP-соседи не обязательно должны быть непосредственно соединены.
- * Внешний BGP сосед (eBGP-сосед) — сосед, который находится в автономной системе отличной от локального маршрутизатора. По умолчанию, eBGP-соседи должны быть непосредственно соединены.
 
-BGP выполняет следующие проверки, когда формирует отношения соседства:
-* Маршрутизатор должен получить запрос на TCP-соединение с адресом отправителя, который маршрутизатор найдет указанным в списке соседей (команда neighbor).
-* Номер автономной системы локального маршрутизатора должен совпадать с номером автономной системы, который указан на соседнем маршрутизаторе командой neighbor remote-as.
-* Идентификаторы маршрутизаторов (Router ID) не должны совпадать.
-* Если настроена аутентификация, то соседи должны пройти её.
+
 </details>
 
 ## Выполнение домашнего задания
