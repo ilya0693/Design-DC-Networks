@@ -61,7 +61,7 @@ save
 <summary> Начальная конфигурация коммутаторов NX-OS (включая Underlay маршрутизацию) </summary>
 
 Конфигурация коммутатора **_Leaf-1_**
-  ```sh
+```sh
 hostname Leaf-1
 
 feature bgp
@@ -134,7 +134,7 @@ router bgp 4200100011
 ```
 
 Конфигурация коммутатора **_Leaf-2_**
-  ```sh
+```sh
 hostname Leaf-2
 
 feature bgp
@@ -207,7 +207,7 @@ router bgp 4200100022
 ```
 
 Конфигурация коммутатора **_Leaf-3_**
-  ```sh
+```sh
 hostname Leaf-3
 
 feature bgp
@@ -338,7 +338,7 @@ router bgp 4200100000
 ```
 
 Конфигурация коммутатора **_Spine-2_**
- ```sh
+```sh
 hostname Spine-2
   
 feature bgp
