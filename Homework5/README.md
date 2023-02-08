@@ -435,3 +435,60 @@ show l2route evpn mac-ip all
 Организовав связность Loopback интерфейсов между Leaf коммутаторами, далее необходимо построить Overlay сеть с использованием технологий VxLAN/EVPN. Схема Overlay сети представлена на рисунке ниже.
 ![alt-текст](https://github.com/ilya0693/Design-DC-Networks/blob/main/Homework5/%D0%A1%D1%85%D0%B5%D0%BC%D0%B0%20%D1%81%D0%B5%D1%82%D0%B8%20%D0%A6%D0%9E%D0%94%20(%D0%94%D0%971)%20v1.0-Overlay.drawio.png "Схема Overlay ЦОД")
 
+Рассмотрим подробно конфигурацию VxLAN/EVPN одного из Leaf и Spine коммутатора ЦОД.
+
+##### 1.1. Пример конфигурации EVPN на коммутаторе _"Spine-1"_
+
+Включаем функционал EVPN. На Spine коммутаторах функционал VxLAN не включаем, так как Spine коммутаторы занимаются только распространением маршрутной информации (как IPv4, так и EVPN).
+```sh
+nv overlay evpn
+```
+
+Создаем route-map для анонсов connected маршрутов в адресном семействе ipv4. В нашем случае анонсируем только сеть интерфейса Loopback 0.
+```sh
+route-map REDISTRIBUTE_CONNECTED permit 10
+  match interface loopback0
+```
+
+Создаем route-map для анонсов connected маршрутов в адресном семействе ipv4. В нашем случае анонсируем только сеть интерфейса Loopback 0.
+```sh
+route-map REDISTRIBUTE_CONNECTED permit 10
+  match interface loopback0
+```
+
+Создаем route-map, запрещающий менять next-hop при передаче маршрутной информации. Данный route-map необходим только для eBGP.
+```sh
+route-map NEXT-HOP-UNCH permit 10
+  set ip next-hop unchanged
+```
+
+Так как EVPN соседство будет устанавливаться с использованием Loopback адресов, необходимо на Spine коммутаторах донастроить маршрутизацию eBGP в адресном семействе ipv4. Ранее была настроена маршрутизация только Loopback интерфейсов Leaf.
+```sh
+router bgp 4200100000
+  address-family ipv4 unicast
+    redistribute direct route-map REDISTRIBUTE_CONNECTED
+```
+
+Настроим BGP в адресном семействе l2vpn evpn, тем самым создавая Overlay сеть.
+```sh
+router bgp 4200100000
+  address-family l2vpn evpn
+    retain route-target all
+    nexthop route-map NEXT-HOP-UNCH
+  neighbor 10.123.0.0/24 remote-as route-map LEAF_AS_RANGE
+    ebgp-multihop 3
+    update-source loopback 0
+    address-family l2vpn evpn
+      send-community both
+      route-map NEXT-HOP-UNCH out
+```
+
+Несколько моментов, на которые стоит обратить внимание при конфигурации eBGP EVPN:
+1. Команда _retain route-target all_ позволяет сохранить метки VNI на маршрутах EVPN. Без этой команды (так как на Spine не используется функционал VxLAN) Spine будет перезаписывать метки маршрутов, из-за чего может не построиться VxLAN туннель.
+2. Для построения VxLAN туннеля необходимо сохранить достижимость next-hop. eBGP по умолчанию меняет next-hop, в связи с этим необходимо применить route-map политику в сторону Leaf коммутаторов, по направлению out.
+3. Команда _ebgp-multihop 3_ необходима для построения eBGP соседства на Loopback адресах. По умолчанию TTL eBGP равен 1. 
+4. Команда _send-community both_ нужна для передачи расширенных меток (route-target).
+
+Коммутатор Spine-2 настраивается идентичным образом.
+
+##### 1.2. Пример конфигурации VxLAN/EVPN на коммутаторе _"Leaf-1"_
