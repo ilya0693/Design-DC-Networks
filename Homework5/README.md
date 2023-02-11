@@ -96,7 +96,7 @@ interface Ethernet1/2
   ip address 10.123.1.3/31
   no shutdown
   
-  interface ethernet 1/7
+interface ethernet 1/7
   description Server-1
   switchport
   switchport mode access
@@ -121,15 +121,15 @@ router bgp 4200100011
   address-family ipv4 unicast
     redistribute direct route-map REDISTRIBUTE_CONNECTED
     maximum-paths 64
-  template peer Spines
+  template peer Spines_Underlay
     remote-as 4200100000
     timers 3 9
     address-family ipv4 unicast
   neighbor 10.123.1.0
-    inherit peer Spines
+    inherit peer Spines_Underlay
     description Spine-1
   neighbor 10.123.1.2
-    inherit peer Spines
+    inherit peer Spines_Underlay
     description Spine-2
 ```
 
@@ -169,7 +169,7 @@ interface Ethernet1/2
   ip address 10.123.1.7/31
   no shutdown
   
-  interface ethernet 1/7
+interface ethernet 1/7
   description Server-2
   switchport
   switchport mode access
@@ -194,15 +194,15 @@ router bgp 4200100022
   address-family ipv4 unicast
     redistribute direct route-map REDISTRIBUTE_CONNECTED
     maximum-paths 64
-  template peer Spines
+  template peer Spines_Underlay
     remote-as 4200100000
     timers 3 9
     address-family ipv4 unicast
   neighbor 10.123.1.4
-    inherit peer Spines
+    inherit peer Spines_Underlay
     description Spine-1
   neighbor 10.123.1.6
-    inherit peer Spines
+    inherit peer Spines_Underlay
     description Spine-2
 ```
 
@@ -273,15 +273,15 @@ router bgp 4200100033
   address-family ipv4 unicast
     redistribute direct route-map REDISTRIBUTE_CONNECTED
     maximum-paths 64
-  template peer Spines
+  template peer Spines_Underlay
     remote-as 4200100000
     timers 3 9
     address-family ipv4 unicast
   neighbor 10.123.1.8
-    inherit peer Spines
+    inherit peer Spines_Underlay
     description Spine-1
   neighbor 10.123.1.10
-    inherit peer Spines
+    inherit peer Spines_Underlay
     description Spine-2
 ```
 
@@ -332,8 +332,10 @@ router bgp 4200100000
   router-id 10.123.0.41
   bestpath as-path multipath-relax
   address-family ipv4 unicast
+    redistribute direct route-map REDISTRIBUTE_CONNECTED
     maximum-paths 64
   neighbor 10.123.1.0/24 remote-as route-map LEAFS_AS
+    timers 3 9
     address-family ipv4 unicast
 ```
 
@@ -384,8 +386,10 @@ router bgp 4200100000
   router-id 10.123.0.51
   bestpath as-path multipath-relax
   address-family ipv4 unicast
+    redistribute direct route-map REDISTRIBUTE_CONNECTED
     maximum-paths 64
   neighbor 10.123.1.0/24 remote-as route-map LEAFS_AS
+    timers 3 9
     address-family ipv4 unicast
 ```
 </details>
@@ -467,13 +471,14 @@ router bgp 4200100000
 ```sh
 router bgp 4200100000
   address-family l2vpn evpn
-    retain route-target all
     nexthop route-map NEXT-HOP-UNCH
-  neighbor 10.123.0.0/24 remote-as route-map LEAF_AS_RANGE
+    retain route-target all
+  neighbor 10.123.0.0/24 remote-as route-map LEAFS_AS
+    update-source loopback0
     ebgp-multihop 3
-    update-source loopback 0
     address-family l2vpn evpn
-      send-community both
+      send-community
+      send-community extended
       route-map NEXT-HOP-UNCH out
 ```
 
@@ -504,13 +509,14 @@ router bgp 4200100000
   
 router bgp 4200100000
   address-family l2vpn evpn
-    retain route-target all
     nexthop route-map NEXT-HOP-UNCH
-  neighbor 10.123.0.0/24 remote-as route-map LEAF_AS_RANGE
+    retain route-target all
+  neighbor 10.123.0.0/24 remote-as route-map LEAFS_AS
+    update-source loopback0
     ebgp-multihop 3
-    update-source loopback 0
     address-family l2vpn evpn
-      send-community both
+      send-community
+      send-community extended
       route-map NEXT-HOP-UNCH out
 ```
 </details>
@@ -527,44 +533,45 @@ feature nv overlay
 Ассоциируем VLAN'ы с VNI. В данной домашней работе для VNI зарезервировано значение 8XXXX, где XXXX - номер VLAN'а.
 ```sh
 vlan 100
-  name Servers
   vn-segment 80100
 ```
 
 Настроим BGP в адресном семействе l2vpn evpn, тем самым создавая Overlay сеть.
 ```sh
 router bgp 4200100011
-  template peer SPINE_Overlay
-      remote-as 4200100000
-      update-source loopback1
-      ebgp-multihop 3
-      timers 3 9
-      address-family l2vpn evpn
-        send-community both
   neighbor 10.123.0.41
-    inherit peer SPINE_Overlay
-    description Spine-1_Lo0
+    remote-as 4200100000
+    update-source loopback1
+    ebgp-multihop 3
+    address-family l2vpn evpn
+      send-community
+      send-community extended
   neighbor 10.123.0.51
-    inherit peer SPINE_Overlay
-    description Spine-1_Lo0
+    remote-as 4200100000
+    update-source loopback1
+    ebgp-multihop 3
+    address-family l2vpn evpn
+      send-community
+      send-community extended
 ```
 
 Сконфигурируем nve интерфейс для работы VxLAN.
 ```sh
-interface nve 1
+interface nve1
+  no shutdown
+  host-reachability protocol bgp
   source-interface loopback1
   member vni 80100
     ingress-replication protocol bgp
-  no shutdown
 ```
 
 Сконфигурируем evpn, укажем, что у нас используется L2 VNI, настроим RD и RT для нашего VNI. Так как у нас используется eBGP, рекомендуется настраивать RD и RT вручную, чтобы они были одинаковыми в разных AS.
 ```sh
 evpn
   vni 80100 l2
-    rd 10.123.0.12:80100
-    route-target export 80100:100
+    rd 10.123.0.12:100
     route-target import 80100:100
+    route-target export 80100:100
 ```
 
 На остальных коммутаторах Leaf VxLAN EVPN настраивается идентичным образом. С конфигурацией коммутаторов можно ознакомиться ниже.
