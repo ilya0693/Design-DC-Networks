@@ -381,12 +381,10 @@ router bgp 4200100000
 ```
 show nve peers
 show nve vni
-show ip arp suppression-cache detail
 show vxlan interface
 show bgp l2vpn evpn summary
 show bgp l2vpn evpn
 show l2route evpn mac all
-show l2route evpn mac-ip all
 ```
 
 </details>
@@ -414,6 +412,9 @@ show l2route evpn mac-ip all
 </details>
 
 ## Выполнение домашнего задания
+
+### 1. Конфигурация VxLAN EVPN (L2 VNI).
+
 Данная домашняя работа является прямым продолжением домашней работы [Homework4](https://github.com/ilya0693/Design-DC-Networks/blob/main/Homework4/README.md). Выбор протокола BGP в качестве Underlay является предпочтением автора, плюс данный протокол более гибок с точки зрения масштабирования и управления (фильтрации) маршрутами. С начальной конфигурацией, в том числе и с конфигурацией Underlay сети, можно ознакомиться выше. 
 
 Организовав связность Loopback интерфейсов между Leaf коммутаторами, далее необходимо построить Overlay сеть с использованием технологий VxLAN/EVPN. Схема Overlay сети представлена на рисунке ниже.
@@ -639,3 +640,178 @@ evpn
 ```
 </details>
 
+##### 1.3. Проверка работоспособности VxLAN EVPN
+После настройки L2 связности с использованием технологий VxLAN EVPN проверим, что у нас VxLAN туннель работает, а EVPN маршруты передаются. В качестве примера, проверим работоспособность маршрутизации VxLAN EVPN со стороны коммутатора **_Leaf-2_**
+
+1. Проверка состояния NVE интерфейса (VxLAN туннеля).
+ ```sh
+Leaf-2# sh nve peers
+Interface Peer-IP                                 State LearnType Uptime   Route
+r-Mac
+--------- --------------------------------------  ----- --------- -------- -----
+------------
+nve1      10.123.0.12                             Up    CP        00:27:38 n/a
+
+nve1      10.123.0.32                             Up    CP        00:27:19 n/a
+
+```
+Как мы видим, интерфейс NVE в состоянии UP.
+
+2. Более подробная информация об nve интерфейсе.
+ ```sh
+Leaf-2# show nve vni
+Codes: CP - Control Plane        DP - Data Plane
+       UC - Unconfigured         SA - Suppress ARP
+       SU - Suppress Unknown Unicast
+       Xconn - Crossconnect
+       MS-IR - Multisite Ingress Replication
+
+Interface VNI      Multicast-group   State Mode Type [BD/VRF]      Flags
+--------- -------- ----------------- ----- ---- ------------------ -----
+nve1      80100    UnicastBGP        Up    CP   L2 [100]
+```
+Из вывода команды видим, что информацию об удаленных мак адресах Leaf-2 получает через Control Plane (через BGP) с использованием ingress репликации. Также из вывода команды видно, что nve интерфейс в состоянии UP и информацию о VNI.
+
+3. Просмотр статуса VxLAN интерфейса
+ ```sh
+Leaf-2# show vxlan interface
+Interface       Vlan    VPL Ifindex     LTL             HW VP
+=========       ====    ===========     ===             =====
+Eth1/7          100     0x530647fa      0x1801          2050
+```
+
+4. Проверка общей (суммарной) информации об установлении BGP соседства в адресном семействе L2VPN EVPN.
+ ```sh
+Leaf-2# show bgp l2vpn evpn summary
+BGP summary information for VRF default, address family L2VPN EVPN
+BGP router identifier 10.123.0.21, local AS number 4200100022
+BGP table version is 91, L2VPN EVPN config peers 2, capable peers 2
+12 network entries and 17 paths using 2928 bytes of memory
+BGP attribute entries [8/1376], BGP AS path entries [2/20]
+BGP community entries [0/0], BGP clusterlist entries [0/0]
+
+Neighbor        V    AS MsgRcvd MsgSent   TblVer  InQ OutQ Up/Down  State/PfxRcd
+10.123.0.41     4 4200100000
+                            109      90       91    0    0 00:40:29 5
+10.123.0.51     4 4200100000
+                            103      88       91    0    0 00:41:18 5
+```
+
+Как мы видим, BGP соседство установлено и они обмениваются EVPN маршрутами.
+
+5. Просмотр таблицы BGP адресного семейства L2VPN EVPN.
+ ```sh
+Leaf-2# show bgp l2vpn evpn
+BGP routing table information for VRF default, address family L2VPN EVPN
+BGP table version is 91, Local Router ID is 10.123.0.21
+Status: s-suppressed, x-deleted, S-stale, d-dampened, h-history, *-valid, >-best
+Path type: i-internal, e-external, c-confed, l-local, a-aggregate, r-redist, I-i
+njected
+Origin codes: i - IGP, e - EGP, ? - incomplete, | - multipath, & - backup, 2 - b
+est2
+
+   Network            Next Hop            Metric     LocPrf     Weight Path
+Route Distinguisher: 10.123.0.12:100
+* e[2]:[0]:[0]:[48]:[0050.7966.6806]:[0]:[0.0.0.0]/216
+                      10.123.0.12                                    0 420010000
+0 4200100011 i
+*>e                   10.123.0.12                                    0 420010000
+0 4200100011 i
+* e[3]:[0]:[32]:[10.123.0.12]/88
+                      10.123.0.12                                    0 420010000
+0 4200100011 i
+*>e                   10.123.0.12                                    0 420010000
+0 4200100011 i
+
+Route Distinguisher: 10.123.0.22:100    (L2VNI 80100)
+*>e[2]:[0]:[0]:[48]:[0050.7966.6806]:[0]:[0.0.0.0]/216
+                      10.123.0.12                                    0 420010000
+0 4200100011 i
+*>l[2]:[0]:[0]:[48]:[0050.7966.6807]:[0]:[0.0.0.0]/216
+                      10.123.0.22                       100      32768 i
+*>e[2]:[0]:[0]:[48]:[0050.7966.6808]:[0]:[0.0.0.0]/216
+                      10.123.0.32                                    0 420010000
+0 4200100033 i
+*>e[2]:[0]:[0]:[48]:[0050.7966.6809]:[0]:[0.0.0.0]/216
+                      10.123.0.32                                    0 420010000
+0 4200100033 i
+*>e[3]:[0]:[32]:[10.123.0.12]/88
+                      10.123.0.12                                    0 420010000
+0 4200100011 i
+*>l[3]:[0]:[32]:[10.123.0.22]/88
+                      10.123.0.22                       100      32768 i
+*>e[3]:[0]:[32]:[10.123.0.32]/88
+                      10.123.0.32                                    0 420010000
+0 4200100033 i
+
+Route Distinguisher: 10.123.0.32:100
+* e[2]:[0]:[0]:[48]:[0050.7966.6808]:[0]:[0.0.0.0]/216
+                      10.123.0.32                                    0 420010000
+0 4200100033 i
+*>e                   10.123.0.32                                    0 420010000
+0 4200100033 i
+* e[2]:[0]:[0]:[48]:[0050.7966.6809]:[0]:[0.0.0.0]/216
+                      10.123.0.32                                    0 420010000
+0 4200100033 i
+*>e                   10.123.0.32                                    0 420010000
+0 4200100033 i
+* e[3]:[0]:[32]:[10.123.0.32]/88
+                      10.123.0.32                                    0 420010000
+0 4200100033 i
+*>e                   10.123.0.32                                    0 420010000
+0 4200100033 i
+```
+Из вывода команды видно, чте в таблице BGP есть EVPN маршруты до удаленных серверов (маршруты 2 типа) и маршруты до удаленных VTEP (маршруты 3 типа).
+
+6. Просмотр L2 маршрутов EVPN.
+ ```sh
+Leaf-2# show l2route evpn mac all
+
+Flags -(Rmac):Router MAC (Stt):Static (L):Local (R):Remote (V):vPC link
+(Dup):Duplicate (Spl):Split (Rcv):Recv (AD):Auto-Delete (D):Del Pending
+(S):Stale (C):Clear, (Ps):Peer Sync (O):Re-Originated (Nho):NH-Override
+(Pf):Permanently-Frozen, (Orp): Orphan
+
+Topology    Mac Address    Prod   Flags         Seq No     Next-Hops
+
+----------- -------------- ------ ------------- ---------- ---------------------
+------------------
+100         0050.7966.6806 BGP    Rcv           0          10.123.0.12 (Label: 80100)
+100         0050.7966.6807 Local  L,            0          Eth1/7
+100         0050.7966.6808 BGP    Rcv           0          10.123.0.32 (Label: 80100)
+100         0050.7966.6809 BGP    Rcv           0          10.123.0.32 (Label: 80100)
+```
+Из вывода команды видно, что мак адрес Server-2 выучен локально, остальные получены от удаленных VTEP.
+
+### 2. Проверка доступности сетевых узлов.
+После настройки VxLAN EVPN проверим, что сервера "видят" друг друга. Для проверки доступности сетевых узлов будем использовать протокол ICMP, а именно команду ping, запускаемую на серверах ЦОД. Ниже представлен пример доступности всех серверов. Проверка проводилась с сервера 1 (Server-1).
+
+```sh
+Server-1> ping 10.123.100.11
+
+84 bytes from 10.123.100.11 icmp_seq=1 ttl=64 time=18.914 ms
+84 bytes from 10.123.100.11 icmp_seq=2 ttl=64 time=12.561 ms
+84 bytes from 10.123.100.11 icmp_seq=3 ttl=64 time=14.446 ms
+84 bytes from 10.123.100.11 icmp_seq=4 ttl=64 time=10.016 ms
+84 bytes from 10.123.100.11 icmp_seq=5 ttl=64 time=20.848 ms
+
+Server-1> ping 10.123.100.12
+
+84 bytes from 10.123.100.12 icmp_seq=1 ttl=64 time=20.319 ms
+84 bytes from 10.123.100.12 icmp_seq=2 ttl=64 time=12.372 ms
+84 bytes from 10.123.100.12 icmp_seq=3 ttl=64 time=16.958 ms
+84 bytes from 10.123.100.12 icmp_seq=4 ttl=64 time=19.306 ms
+84 bytes from 10.123.100.12 icmp_seq=5 ttl=64 time=10.845 ms
+
+Server-1> ping 10.123.100.13
+
+84 bytes from 10.123.100.13 icmp_seq=1 ttl=64 time=14.940 ms
+84 bytes from 10.123.100.13 icmp_seq=2 ttl=64 time=11.760 ms
+84 bytes from 10.123.100.13 icmp_seq=3 ttl=64 time=15.948 ms
+84 bytes from 10.123.100.13 icmp_seq=4 ttl=64 time=11.794 ms
+84 bytes from 10.123.100.13 icmp_seq=5 ttl=64 time=12.585 ms
+```
+
+С остальных серверов результаты положительные, у каждого сервера есть L2 связность.
+
+С полной версией конфигурации каждого сетевого оборудования можно ознакомиться [здесь](https://github.com/ilya0693/Design-DC-Networks/tree/main/Homework5/Configs).
