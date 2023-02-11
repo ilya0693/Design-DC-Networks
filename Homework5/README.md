@@ -450,12 +450,6 @@ route-map REDISTRIBUTE_CONNECTED permit 10
   match interface loopback0
 ```
 
-Создаем route-map для анонсов connected маршрутов в адресном семействе ipv4. В нашем случае анонсируем только сеть интерфейса Loopback 0.
-```sh
-route-map REDISTRIBUTE_CONNECTED permit 10
-  match interface loopback0
-```
-
 Создаем route-map, запрещающий менять next-hop при передаче маршрутной информации. Данный route-map необходим только для eBGP.
 ```sh
 route-map NEXT-HOP-UNCH permit 10
@@ -489,6 +483,88 @@ router bgp 4200100000
 3. Команда _ebgp-multihop 3_ необходима для построения eBGP соседства на Loopback адресах. По умолчанию TTL eBGP равен 1. 
 4. Команда _send-community both_ нужна для передачи расширенных меток (route-target).
 
-Коммутатор Spine-2 настраивается идентичным образом.
+Коммутатор Spine-2 настраивается идентичным образом. С конфигурацией коммутатора Spine-2 можно ознакомиться ниже
+
+<details>
+
+<summary> Конфигурация EVPN на коммутаторе Spine-2 </summary>
+
+```sh
+nv overlay evpn
+  
+route-map REDISTRIBUTE_CONNECTED permit 10
+  match interface loopback0
+  
+route-map NEXT-HOP-UNCH permit 10
+  set ip next-hop unchanged
+  
+router bgp 4200100000
+  address-family ipv4 unicast
+    redistribute direct route-map REDISTRIBUTE_CONNECTED
+  
+router bgp 4200100000
+  address-family l2vpn evpn
+    retain route-target all
+    nexthop route-map NEXT-HOP-UNCH
+  neighbor 10.123.0.0/24 remote-as route-map LEAF_AS_RANGE
+    ebgp-multihop 3
+    update-source loopback 0
+    address-family l2vpn evpn
+      send-community both
+      route-map NEXT-HOP-UNCH out
+```
+</details>
 
 ##### 1.2. Пример конфигурации VxLAN/EVPN на коммутаторе _"Leaf-1"_
+
+Включаем функционал EVPN, VxLAN и возможность ассоциировать VLAN с VNI.
+```sh
+nv overlay evpn
+feature vn-segment-vlan-based
+feature nv overlay
+```
+
+Ассоциируем VLAN'ы с VNI. В данной домашней работе для VNI зарезервировано значение 8XXXX, где XXXX - номер VLAN'а.
+```sh
+vlan 100
+  name Servers
+  vn-segment 80100
+```
+
+Настроим BGP в адресном семействе l2vpn evpn, тем самым создавая Overlay сеть.
+```sh
+router bgp 4200100011
+  template peer SPINE_Overlay
+      remote-as 4200100000
+      update-source loopback1
+      ebgp-multihop 3
+      timers 3 9
+      address-family l2vpn evpn
+        send-community both
+  neighbor 10.123.0.41
+    inherit peer SPINE_Overlay
+    description Spine-1_Lo0
+  neighbor 10.123.0.51
+    inherit peer SPINE_Overlay
+    description Spine-1_Lo0
+```
+
+Сконфигурируем nve интерфейс для работы VxLAN.
+```sh
+interface nve 1
+  source-interface loopback1
+  member vni 80100
+    ingress-replication protocol bgp
+  no shutdown
+```
+
+Сконфигурируем evpn, укажем, что у нас используется L2 VNI, настроим RD и RT для нашего VNI. Так как у нас используется eBGP, рекомендуется настраивать RD и RT вручную, чтобы они были одинаковыми в разных AS.
+```sh
+evpn
+  vni 80100 l2
+    rd 10.123.0.12:80100
+    route-target export 80100:100
+    route-target import 80100:100
+```
+
+На остальных коммутаторах Leaf VxLAN EVPN настраивается идентичным образом. С конфигурацией коммутаторов можно ознакомиться ниже.
