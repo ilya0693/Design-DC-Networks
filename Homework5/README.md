@@ -76,12 +76,6 @@ vlan 100
 route-map REDISTRIBUTE_CONNECTED permit 10
   match interface loopback1
   
-interface Vlan100
-  description GW_for_Servers->VLAN100
-  no shutdown
-  no ip redirects
-  ip address 10.123.100.1/24
-  
 interface Ethernet1/1
   description to_Spine-1
   no switchport
@@ -149,12 +143,6 @@ vlan 100
 route-map REDISTRIBUTE_CONNECTED permit 10
   match interface loopback1
   
-interface Vlan100
-  description GW_for_Servers->VLAN100
-  no shutdown
-  no ip redirects
-  ip address 10.123.100.1/24
-  
 interface Ethernet1/1
   description to_Spine-1
   no switchport
@@ -221,12 +209,6 @@ vlan 100
   
 route-map REDISTRIBUTE_CONNECTED permit 10
   match interface loopback1  
-
-interface Vlan100
-  description GW_for_Servers->VLAN100
-  no shutdown
-  no ip redirects
-  ip address 10.123.100.1/24
   
 interface Ethernet1/1
   description to_Spine-1
@@ -332,7 +314,6 @@ router bgp 4200100000
   router-id 10.123.0.41
   bestpath as-path multipath-relax
   address-family ipv4 unicast
-    redistribute direct route-map REDISTRIBUTE_CONNECTED
     maximum-paths 64
   neighbor 10.123.1.0/24 remote-as route-map LEAFS_AS
     timers 3 9
@@ -386,7 +367,6 @@ router bgp 4200100000
   router-id 10.123.0.51
   bestpath as-path multipath-relax
   address-family ipv4 unicast
-    redistribute direct route-map REDISTRIBUTE_CONNECTED
     maximum-paths 64
   neighbor 10.123.1.0/24 remote-as route-map LEAFS_AS
     timers 3 9
@@ -467,7 +447,7 @@ router bgp 4200100000
     redistribute direct route-map REDISTRIBUTE_CONNECTED
 ```
 
-Настроим BGP в адресном семействе l2vpn evpn, тем самым создавая Overlay сеть.
+Настроим BGP в адресном семействе l2vpn evpn, тем самым создав Overlay сеть.
 ```sh
 router bgp 4200100000
   address-family l2vpn evpn
@@ -536,23 +516,22 @@ vlan 100
   vn-segment 80100
 ```
 
-Настроим BGP в адресном семействе l2vpn evpn, тем самым создавая Overlay сеть.
+Настроим BGP в адресном семействе l2vpn evpn, тем самым создав Overlay сеть.
 ```sh
 router bgp 4200100011
+  template peer Spines_Overlay
+    remote-as 4200100000
+    update-source loopback1
+    ebgp-multihop 3
+    address-family l2vpn evpn
+      send-community
+      send-community extended
   neighbor 10.123.0.41
-    remote-as 4200100000
-    update-source loopback1
-    ebgp-multihop 3
-    address-family l2vpn evpn
-      send-community
-      send-community extended
+    inherit peer Spines_Overlay
+    description Spine-1
   neighbor 10.123.0.51
-    remote-as 4200100000
-    update-source loopback1
-    ebgp-multihop 3
-    address-family l2vpn evpn
-      send-community
-      send-community extended
+    inherit peer Spines_Overlay
+    description Spine-2
 ```
 
 Сконфигурируем nve интерфейс для работы VxLAN.
@@ -575,3 +554,88 @@ evpn
 ```
 
 На остальных коммутаторах Leaf VxLAN EVPN настраивается идентичным образом. С конфигурацией коммутаторов можно ознакомиться ниже.
+
+<details>
+
+<summary> Конфигурация VxLAN EVPN на коммутаторе Leaf-2 </summary>
+
+```sh
+nv overlay evpn
+feature vn-segment-vlan-based
+feature nv overlay
+ 
+vlan 100
+  vn-segment 80100
+  
+router bgp 4200100022
+  template peer Spines_Overlay
+    remote-as 4200100000
+    update-source loopback1
+    ebgp-multihop 3
+    address-family l2vpn evpn
+      send-community
+      send-community extended
+  neighbor 10.123.0.41
+    inherit peer Spines_Overlay
+    description Spine-1
+  neighbor 10.123.0.51
+    inherit peer Spines_Overlay
+    description Spine-2
+  
+interface nve1
+  no shutdown
+  host-reachability protocol bgp
+  source-interface loopback1
+  member vni 80100
+    ingress-replication protocol bgp
+
+evpn
+  vni 80100 l2
+    rd 10.123.0.22:100
+    route-target import 80100:100
+    route-target export 80100:100
+```
+</details>
+
+<details>
+
+<summary> Конфигурация VxLAN EVPN на коммутаторе Leaf-3 </summary>
+
+```sh
+nv overlay evpn
+feature vn-segment-vlan-based
+feature nv overlay
+ 
+vlan 100
+  vn-segment 80100
+  
+router bgp 4200100022
+  template peer Spines_Overlay
+    remote-as 4200100000
+    update-source loopback1
+    ebgp-multihop 3
+    address-family l2vpn evpn
+      send-community
+      send-community extended
+  neighbor 10.123.0.41
+    inherit peer Spines_Overlay
+    description Spine-1
+  neighbor 10.123.0.51
+    inherit peer Spines_Overlay
+    description Spine-2
+  
+interface nve1
+  no shutdown
+  host-reachability protocol bgp
+  source-interface loopback1
+  member vni 80100
+    ingress-replication protocol bgp
+
+evpn
+  vni 80100 l2
+    rd 10.123.0.32:100
+    route-target import 80100:100
+    route-target export 80100:100
+```
+</details>
+
