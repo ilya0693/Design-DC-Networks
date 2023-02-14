@@ -184,7 +184,9 @@ feature interface-vlan
 no ip domain-lookup
 ip domain-name dc.lab
 
-vlan 100
+vlan 200
+  name Servers
+vlan 300
   name Servers
   
 route-map REDISTRIBUTE_CONNECTED permit 10
