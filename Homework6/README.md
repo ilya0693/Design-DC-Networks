@@ -79,20 +79,13 @@ route-map REDISTRIBUTE_CONNECTED permit 10
 interface Ethernet1/1
   description to_Spine-1
   no switchport
-  no ip redirects
   ip address 10.123.1.1/31
   no shutdown
-
-interface Ethernet1/2
-  description to_Spine-2
-  no switchport
-  no ip redirects
-  ip address 10.123.1.3/31
-  no shutdown
   
-  interface ethernet 1/7
+interface ethernet 1/7
   description Server-1
   switchport
+  no shutdown
   switchport mode access
   switchport access vlan 100
 
@@ -115,16 +108,13 @@ router bgp 4200100011
   address-family ipv4 unicast
     redistribute direct route-map REDISTRIBUTE_CONNECTED
     maximum-paths 64
-  template peer Spines
+  template peer Spines_Underlay
     remote-as 4200100000
     timers 3 9
     address-family ipv4 unicast
   neighbor 10.123.1.0
-    inherit peer Spines
+    inherit peer Spines_Underlay
     description Spine-1
-  neighbor 10.123.1.2
-    inherit peer Spines
-    description Spine-2
 ```
 
 Конфигурация коммутатора **_Leaf-2_**
@@ -148,15 +138,10 @@ interface Ethernet1/1
   no switchport
   ip address 10.123.1.5/31
   no shutdown
-
-interface Ethernet1/2
-  description to_Spine-2
-  no switchport
-  ip address 10.123.1.7/31
-  no shutdown
   
 interface ethernet 1/7
   description Server-2
+  no shutdown
   switchport
   switchport mode access
   switchport access vlan 100
@@ -187,9 +172,6 @@ router bgp 4200100022
   neighbor 10.123.1.4
     inherit peer Spines_Underlay
     description Spine-1
-  neighbor 10.123.1.6
-    inherit peer Spines_Underlay
-    description Spine-2
 ```
 
 Конфигурация коммутатора **_Leaf-3_**
@@ -206,37 +188,25 @@ vlan 100
   name Servers
   
 route-map REDISTRIBUTE_CONNECTED permit 10
-  match interface loopback1  
-
-interface Vlan100
-  description GW_for_Servers->VLAN100
-  no shutdown
-  no ip redirects
-  ip address 10.123.100.1/24
+  match interface loopback0 loopback1  
   
 interface Ethernet1/1
   description to_Spine-1
   no switchport
-  no ip redirects
   ip address 10.123.1.9/31
-  no shutdown
-
-interface Ethernet1/2
-  description to_Spine-2
-  no switchport
-  no ip redirects
-  ip address 10.123.1.11/31
   no shutdown
   
 interface ethernet 1/6
   description Server-3
   switchport
+  no shutdown
   switchport mode access
   switchport access vlan 100
   
 interface ethernet 1/7
   description Server-4
   switchport
+  no shutdown
   switchport mode access
   switchport access vlan 100
 
@@ -264,11 +234,8 @@ router bgp 4200100033
     timers 3 9
     address-family ipv4 unicast
   neighbor 10.123.1.8
-    inherit peer Spines
+    inherit peer Spines_Underlay
     description Spine-1
-  neighbor 10.123.1.10
-    inherit peer Spines
-    description Spine-2
 ```
 
 Конфигурация коммутатора **_Spine-1_**  
@@ -280,24 +247,26 @@ feature bgp
 no ip domain-lookup
 ip domain-name dc.lab
   
+route-map REDISTRIBUTE_CONNECTED permit 10
+  match interface loopback0
+route-map LEAFS_AS permit 10
+  match as-path LEAFS_AS
+  
 interface Ethernet1/1
   description to_Leaf-1
   no switchport
-  no ip redirects
   ip address 10.123.1.0/31
   no shutdown
 
 interface Ethernet1/2
   description to_Leaf-2
   no switchport
-  no ip redirects
   ip address 10.123.1.4/31
   no shutdown
 
 interface Ethernet1/3
   description to_Leaf-3
   no switchport
-  no ip redirects
   ip address 10.123.1.8/31
   no shutdown
 
@@ -311,69 +280,17 @@ cli alias name wr copy running-config startup-config
   
 ip as-path access-list LEAFS_AS seq 10 permit "^42001000[1-9]{2}$"
   
-route-map LEAFS_AS permit 10
-  match as-path LEAFS_AS
-  
 router bgp 4200100000
   router-id 10.123.0.41
   bestpath as-path multipath-relax
   address-family ipv4 unicast
+    redistribute direct route-map REDISTRIBUTE_CONNECTED
     maximum-paths 64
   neighbor 10.123.1.0/24 remote-as route-map LEAFS_AS
+    timers 3 9
     address-family ipv4 unicast
 ```
 
-Конфигурация коммутатора **_Spine-2_**
-```sh
-hostname Spine-2
-  
-feature bgp
-
-no ip domain-lookup
-ip domain-name dc.lab
-  
-interface Ethernet1/1
-  description to_Leaf-1
-  no switchport
-  no ip redirects
-  ip address 10.123.1.2/31
-  no shutdown
-
-interface Ethernet1/2
-  description to_Leaf-2
-  no switchport
-  no ip redirects
-  ip address 10.123.1.6/31
-  no shutdown
-
-interface Ethernet1/3
-  description to_Leaf-3
-  no switchport
-  no ip redirects
-  ip address 10.123.1.10/31
-  no shutdown
-
-interface loopback0
-  description RID
-  ip address 10.123.0.51/32
-
-boot nxos bootflash:nxos.9.3.10.bin  
-  
-cli alias name wr copy running-config startup-config
-  
-ip as-path access-list LEAFS_AS seq 10 permit "^42001000[1-9]{2}$"
-  
-route-map LEAFS_AS permit 10
-  match as-path LEAFS_AS
-  
-router bgp 4200100000
-  router-id 10.123.0.51
-  bestpath as-path multipath-relax
-  address-family ipv4 unicast
-    maximum-paths 64
-  neighbor 10.123.1.0/24 remote-as route-map LEAFS_AS
-    address-family ipv4 unicast
-```
 </details>
 
 <details> 
