@@ -16,8 +16,8 @@
 
 <summary> Схема стенда </summary>
 
-В данном задании стенд собран, согласно схеме, спроектированной в 1ом домашнем задании. Ниже предаставлена реализация спроектируемой сети в эмуляторе EVE-NG. С L2 и L3 схемой сети можно ознакомиться по [ссылке](https://github.com/ilya0693/Design-DC-Networks/blob/main/Homework1/README.md#%D1%82%D0%BE%D0%BF%D0%BE%D0%BB%D0%BE%D0%B3%D0%B8%D1%8F-%D1%81%D0%B5%D1%82%D0%B8-%D1%86%D0%BE%D0%B4-%D0%B8-%D0%B5%D0%B5-%D0%BE%D0%BF%D0%B8%D1%81%D0%B0%D0%BD%D0%B8%D0%B5).
-
+В данном задании стенд отличается от того, что было сделано в предыдущих домашних работах. Основное отличие заключается в отсутствии 2го коммутатора уровня Spine. Данное изменение обусловлено тем, что в стенде, который предоставил OTUS, дискомфортно работать при использовании 5 Nexus'ов (полагаю, тех ресурсов, которые нам выделили, все таки недостаточно для комфортной работы). Надеюсь на понимание преподавателей при проверке домашней работы. Ниже предаставлена реализация спроектируемой сети в эмуляторе EVE-NG.
+  
 ![alt-текст](https://github.com/ilya0693/Design-DC-Networks/blob/main/Homework4/Stand.png "Схема стенда")
 
 </details>
@@ -74,13 +74,7 @@ vlan 100
   name Servers
   
 route-map REDISTRIBUTE_CONNECTED permit 10
-  match interface loopback1
-  
-interface Vlan100
-  description GW_for_Servers->VLAN100
-  no shutdown
-  no ip redirects
-  ip address 10.123.100.1/24
+  match interface loopback0 loopback1
   
 interface Ethernet1/1
   description to_Spine-1
@@ -147,29 +141,21 @@ vlan 100
   name Servers
 
 route-map REDISTRIBUTE_CONNECTED permit 10
-  match interface loopback1
-  
-interface Vlan100
-  description GW_for_Servers->VLAN100
-  no shutdown
-  no ip redirects
-  ip address 10.123.100.1/24
+  match interface loopback0 loopback1
   
 interface Ethernet1/1
   description to_Spine-1
   no switchport
-  no ip redirects
   ip address 10.123.1.5/31
   no shutdown
 
 interface Ethernet1/2
   description to_Spine-2
   no switchport
-  no ip redirects
   ip address 10.123.1.7/31
   no shutdown
   
-  interface ethernet 1/7
+interface ethernet 1/7
   description Server-2
   switchport
   switchport mode access
@@ -194,15 +180,15 @@ router bgp 4200100022
   address-family ipv4 unicast
     redistribute direct route-map REDISTRIBUTE_CONNECTED
     maximum-paths 64
-  template peer Spines
+  template peer Spines_Underlay
     remote-as 4200100000
     timers 3 9
     address-family ipv4 unicast
   neighbor 10.123.1.4
-    inherit peer Spines
+    inherit peer Spines_Underlay
     description Spine-1
   neighbor 10.123.1.6
-    inherit peer Spines
+    inherit peer Spines_Underlay
     description Spine-2
 ```
 
