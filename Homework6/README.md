@@ -397,7 +397,6 @@ router bgp 4200100000
 ```
 show nve peers
 show nve vni
-show ip arp suppression-cache detail
 show vxlan interface
 show bgp l2vpn evpn summary
 show bgp l2vpn evpn
