@@ -569,7 +569,7 @@ evpn
     rd 10.123.0.32:200
     route-target import 80200:200
     route-target export 80200:200
-  vni 80200 l2
+  vni 80300 l2
     rd 10.123.0.32:300
     route-target import 80300:300
     route-target export 80300:300
