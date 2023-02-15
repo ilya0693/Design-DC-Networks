@@ -10,3 +10,5 @@
 6. [Homework6. VxLAN. EVPN L3](https://github.com/ilya0693/Design-DC-Networks/tree/main/Homework6)
 7. [Homework7. VxLAN. VPC](https://github.com/ilya0693/Design-DC-Networks/tree/main/Homework7)
 8. [Homework8. VxLAN. Оптимизация таблиц маршрутизации](https://github.com/ilya0693/Design-DC-Networks/tree/main/Homework8)
+
+## Проектная работа
