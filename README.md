@@ -8,3 +8,5 @@
 4. [Homework4. Построение Underlay сети(eBGP)](https://github.com/ilya0693/Design-DC-Networks/tree/main/Homework4)
 5. [Homework5. VxLAN. EVPN L2](https://github.com/ilya0693/Design-DC-Networks/tree/main/Homework5)
 6. [Homework6. VxLAN. EVPN L3](https://github.com/ilya0693/Design-DC-Networks/tree/main/Homework6)
+7. [Homework7. VxLAN. VPC](https://github.com/ilya0693/Design-DC-Networks/tree/main/Homework7)
+8. [Homework8. VxLAN. Оптимизация таблиц маршрутизации](https://github.com/ilya0693/Design-DC-Networks/tree/main/Homework8)
