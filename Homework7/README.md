@@ -288,3 +288,72 @@ router bgp 4200100033
     description Spine-1
 ```
 </details>
+
+##### 1.3. Конфигурация VPC на коммутаторах Leaf-1 и Leaf-2
+Первым шагом включим необходимый функционал для конфигурарования VPC. Также заранее включим функционал, необходимый для работы VxLAN/EVPN. Данные команды вводятся на обоих коммутаторах.
+```sh
+feature vpc
+feature lacp
+feature nv overlay
+feature vn-segment-vlan-based
+nv overlay evpn
+```
+
+Далее настраиваем IP-адресацию на mgmt интерфейсах, которые будут использоваться для обмена keepalive сообщениями. 
+Конфигурация Leaf-1
+```sh
+interface mgmt 0
+ip address 10.123.254.1/30
+no shutdown
+```
+Конфигурация Leaf-2
+```sh
+interface mgmt 0
+ip address 10.123.254.2/30
+no shutdown
+```
+
+Следующим шагом настраиваем VPC домен. Рассмотрим конфигурацию Leaf-1.
+```sh
+vpc domain 10
+  role priority 10
+  peer-keepalive destination 10.123.254.2 source 10.123.254.1
+  peer-switch
+  
+interface Ethernet1/2-3
+  description vpc-peer-link
+  switchport
+  channel-group 1 mode active
+  no shutdown
+
+interface port-channel 1
+  description vpc-peer-link (eth1/2-3)
+  switchport mode trunk
+  vpc peer-link
+  no shutdown
+```
+Немного о конфигурации:
+*	При создании VPC создается VPC домен. Он должен быть одинаковым на обоих Leaf коммутаторах в VPC паре;
+*	Настраиваем приоритет. В случае Leaf-1 мы указываем, что в VPC паре он является Primary нодой;
+*	командой "peer-switch" нужна для работы L2VNI. Если возникнет надобность в L3VNI, то потребуется добавить команду peer-gateway
+*	Остальные команды используются для создания peer-link'а.
+
+Аналогичным образом настраивается коммутатор Leaf-2.
+```sh
+vpc domain 10
+  role priority 20
+  peer-keepalive destination 10.123.254.1 source 10.123.254.2
+  peer-switch
+  
+interface Ethernet1/2-3
+  description vpc-peer-link
+  switchport
+  channel-group 1 mode active
+  no shutdown
+
+interface port-channel 1
+  description vpc-peer-link (eth1/2-3)
+  switchport mode trunk
+  vpc peer-link
+  no shutdown
+```
