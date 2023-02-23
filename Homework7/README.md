@@ -21,41 +21,6 @@
 
 </details>
 
-<details>
-
-<summary> Базовая конфигурация оконечных узлов </summary>
-
-Конфигурация VPCS **_"Server-1"_**
-```sh
-set pcname Server-1
-ip 10.123.100.10 255.255.255.0 10.123.100.1
-save
-```
-
-Конфигурация VPCS **_"Server-2"_**
-```sh
-set pcname Server-2
-ip 10.123.100.11 255.255.255.0 10.123.100.1
-save
-```
-  
-Конфигурация VPCS **_"Server-3"_**
-
-```sh
-set pcname Server-3
-ip 10.123.200.10 255.255.255.0 10.123.200.1
-save
-```
-
-Конфигурация VPCS **_"Server-4"_**
-
-```sh
-set pcname Server-4
-ip 10.123.250.10 255.255.255.0 10.123.250.1
-save
-```
-</details>
-
 <details> 
 <summary> Начальная конфигурация коммутаторов NX-OS (включая Underlay маршрутизацию) </summary>
 
@@ -305,7 +270,7 @@ show vxlan interface
 show bgp l2vpn evpn summary
 show bgp l2vpn evpn
 show l2route evpn mac all
-show l2route evpn mac-ip all
+show vpc brief
 ```
 
 </details>
