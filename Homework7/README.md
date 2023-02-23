@@ -66,5 +66,7 @@ show vpc brief
 В данной домашней работе нам необходимо объединить коммутаторы Leaf-1 и Leaf-2 в VPC пару и обеспечить L3 связность созданной VPC пары с коммутатором L3. После обеспечения L3 связности следующей задачей необходимо обеспечить L2 связность между серверами с использованием технологий VxLAN/EVPN. Схема дизайна Underlay и Overlay сети представлена на рисунках ниже. 
 
 ![alt-текст](https://github.com/ilya0693/Design-DC-Networks/blob/main/Homework7/%D0%A1%D1%85%D0%B5%D0%BC%D0%B0%20%D1%81%D0%B5%D1%82%D0%B8%20%D0%A6%D0%9E%D0%94%20(%D0%94%D0%971)%20v1.0-VPC.drawio.png "Схема Underlay ЦОД")
-
+Рисунок 1 - Схема Underlay ЦОД
 ![alt-текст](https://github.com/ilya0693/Design-DC-Networks/blob/main/Homework7/%D0%A1%D1%85%D0%B5%D0%BC%D0%B0%20%D1%81%D0%B5%D1%82%D0%B8%20%D0%A6%D0%9E%D0%94%20(%D0%94%D0%971)%20v1.0-VPC%20Overlay.drawio.png "Схема Overlay ЦОД")
+Рисунок 2 - Схема Overlay ЦОД
+
