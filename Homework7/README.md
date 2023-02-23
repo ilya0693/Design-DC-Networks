@@ -45,13 +45,6 @@ interface Ethernet1/1
   no switchport
   ip address 10.123.1.1/31
   no shutdown
-  
-interface ethernet 1/7
-  description Server-1
-  switchport
-  no shutdown
-  switchport mode access
-  switchport access vlan 100
 
 interface loopback0
   description RID
@@ -102,13 +95,6 @@ interface Ethernet1/1
   no switchport
   ip address 10.123.1.5/31
   no shutdown
-  
-interface ethernet 1/7
-  description Server-2
-  no shutdown
-  switchport
-  switchport mode access
-  switchport access vlan 100
 
 interface loopback0
   description RID
@@ -122,7 +108,7 @@ boot nxos bootflash:nxos.9.3.10.bin
 
 cli alias name wr copy running-config startup-config
   
-router bgp 4200100022
+router bgp 4200100011
   router-id 10.123.0.21
   bestpath as-path multipath-relax
   reconnect-interval 12
@@ -148,10 +134,8 @@ feature interface-vlan
 no ip domain-lookup
 ip domain-name dc.lab
 
-vlan 200
+vlan 100
   name Servers
-vlan 300
-  name Servers-v300
   
 route-map REDISTRIBUTE_CONNECTED permit 10
   match interface loopback0 loopback1  
@@ -161,20 +145,6 @@ interface Ethernet1/1
   no switchport
   ip address 10.123.1.9/31
   no shutdown
-  
-interface ethernet 1/6
-  description Server-3
-  switchport
-  no shutdown
-  switchport mode access
-  switchport access vlan 200
-  
-interface ethernet 1/7
-  description Server-4
-  switchport
-  no shutdown
-  switchport mode access
-  switchport access vlan 300
 
 interface loopback0
   description RID
