@@ -744,7 +744,7 @@ Success rate is 100 percent (5/5), round-trip min/avg/max = 13/22/59 ms
 ```
 
 Из результатов видно, что удаленный сервер, находящийся за VPC парой, доступен. Протестируем отказоустойчивость, сымитировав поломку коммутатора Leaf-1 (см. рисунок ниже).
-![alt-текст](https://github.com/ilya0693/Design-DC-Networks/blob/main/Homework7/%D0%A1%D1%85%D0%B5%D0%BC%D0%B0%20%D1%81%D0%B5%D1%82%D0%B8%20%D0%A6%D0%9E%D0%94%20(%D0%94%D0%971)%20v1.0-VPC%20Overlay.drawio.png "Поломка Leaf-1")
+![alt-текст](https://github.com/ilya0693/Design-DC-Networks/blob/main/Homework7/Leaf-1%20fail.png "Поломка Leaf-1")
 
 
 
