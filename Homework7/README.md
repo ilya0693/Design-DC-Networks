@@ -746,6 +746,59 @@ Success rate is 100 percent (5/5), round-trip min/avg/max = 13/22/59 ms
 Из результатов видно, что удаленный сервер, находящийся за VPC парой, доступен. Протестируем отказоустойчивость, сымитировав поломку коммутатора Leaf-1 (см. рисунок ниже).
 ![alt-текст](https://github.com/ilya0693/Design-DC-Networks/blob/main/Homework7/Leaf-1%20fail.png "Поломка Leaf-1")
 
+После поломки коммутатора Leaf-1 проверим состояние VPC домена и доступность сервера 1.
+
+```sh
+Leaf-2# show vpc
+Legend:
+                (*) - local vPC is down, forwarding via vPC peer-link
+
+vPC domain id                     : 10
+Peer status                       : peer link is down
+vPC keep-alive status             : Suspended (Destination IP not reachable)
+Configuration consistency status  : success
+Per-vlan consistency status       : success
+Type-2 consistency status         : success
+vPC role                          : secondary, operational primary
+Number of vPCs configured         : 1
+Peer Gateway                      : Disabled
+Dual-active excluded VLANs        : -
+Graceful Consistency Check        : Enabled
+Auto-recovery status              : Disabled
+Delay-restore status              : Timer is off.(timeout = 30s)
+Delay-restore SVI status          : Timer is off.(timeout = 10s)
+Operational Layer3 Peer-router    : Disabled
+Virtual-peerlink mode             : Disabled
+
+vPC Peer-link status
+---------------------------------------------------------------------
+id    Port   Status Active vlans
+--    ----   ------ -------------------------------------------------
+1     Po1    down   -
 
 
-С полной версией конфигурации каждого сетевого оборудования можно ознакомиться [здесь](https://github.com/ilya0693/Design-DC-Networks/tree/main/Homework5/Configs).
+vPC status
+----------------------------------------------------------------------------
+Id    Port          Status Consistency Reason                Active vlans
+--    ------------  ------ ----------- ------                ---------------
+10    Po100         up     success     success               1,100
+
+
+
+
+Please check "show vpc consistency-parameters vpc <vpc-num>" for the
+consistency reason of down vpc and for type-2 consistency reasons for
+any vpc.
+```
+
+```sh
+Server-2#ping 10.123.100.10
+Type escape sequence to abort.
+Sending 5, 100-byte ICMP Echos to 10.123.100.10, timeout is 2 seconds:
+!!!!!
+Success rate is 100 percent (5/5), round-trip min/avg/max = 13/22/59 ms
+```
+
+Как мы видим, сервер 1 доступен после падения Leaf-1, а значит, отказоустойчивость отрабатывает корректно.
+
+С полной версией конфигурации каждого сетевого оборудования можно ознакомиться [здесь](https://github.com/ilya0693/Design-DC-Networks/tree/main/Homework7/Configs).
