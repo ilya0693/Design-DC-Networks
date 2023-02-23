@@ -357,3 +357,395 @@ interface port-channel 1
   vpc peer-link
   no shutdown
 ```
+
+Следующим шагом необходимо настроить VPC в сторону клиента. Конфигурация ниже применяется на обоих Leaf коммутаторах в VPC.
+```sh
+interface Ethernet1/7
+  description to_Server-1
+  switchport
+  channel-group 100 mode active
+  no shutdown
+
+interface port-channel 100
+  description to_Server-1
+  switchport mode trunk
+  vpc 10
+  no shutdown
+```
+##### 1.4. Конфигурация Switch-1 и Server-1
+Настроив VPC, далее настроим на коммутатора Switch-1 агрегацию каналов. 
+```sh
+vlan 100
+  name Servers
+  
+interface range ethernet 0/0-1
+  description Leafs
+  duplex full
+  switchport
+  channel-group 1 mode active
+  no shutdown
+
+interface Port-channel1
+  description Leafs
+  switchport trunk encapsulation dot1q
+  switchport mode trunk
+  no shutdown
+  
+interface Ethernet0/2
+ description Server-1
+ switchport trunk encapsulation dot1q
+ switchport mode trunk
+```
+
+Также выполним базовую настройку Server-1.
+```sh
+hostname Server-1
+  
+interface Ethernet0/0
+  no shutdown
+
+interface Ethernet0/0.100
+ encapsulation dot1Q 100
+ ip address 10.123.100.10 255.255.255.0
+```
+
+На данном шаге настройку L2 связности между VPC парой и сервером можно считать завершенной. Далее настроим VxLAN/EVPN для обеспечения L2 связности между серверами, через Overlay сеть. 
+
+##### 1.5. Конфигурация VxLAN/EVPN
+Первым шагом сконфигурируем Overlay на уровне Spine коммутатора.
+```sh
+nv overlay evpn
+
+route-map NEXT-HOP-UNCH permit 10
+  set ip next-hop unchanged
+  
+router bgp 4200100000
+  address-family l2vpn evpn
+    nexthop route-map NEXT-HOP-UNCH
+    retain route-target all
+  neighbor 10.123.0.0/24 remote-as route-map LEAFS_AS
+    update-source loopback0
+    ebgp-multihop 3
+    address-family l2vpn evpn
+      send-community
+      send-community extended
+      route-map NEXT-HOP-UNCH out
+```
+На данном этапе настройку Spine коммутатора можно считать завершенной.
+
+Далее настроим Leaf коммутаторы, находящихся в VPC паре. Для корректной работы VxLAN/EVPN в VPC паре необходимо на интерфейсе Loopback1 задать secondary IP-адрес. Данный IP-адрес должен быть одинаковым на обоих Leaf коммутаторах.
+
+```sh
+interface loopback 1
+  ip address 10.123.0.10/32 secondary
+```
+
+Далее настроим VxLAN/EVPN на коммутаторах в VPC паре. Ниже представлена конфигурация коммутаторов Leaf-1 и Leaf-2.
+```sh
+vlan 100
+  vn-segment 80100
+
+router bgp 4200100011
+  template peer Spines_Overlay
+    remote-as 4200100000
+    update-source loopback0
+    ebgp-multihop 3
+    address-family l2vpn evpn
+      send-community
+      send-community extended
+  neighbor 10.123.0.41
+    inherit peer Spines_Overlay
+    description Spine-1
+    
+interface nve1
+  no shutdown
+  host-reachability protocol bgp
+  advertise virtual-rmac
+  source-interface loopback1
+  member vni 80100
+    ingress-replication protocol bgp
+
+evpn
+  vni 80100 l2
+    rd 10.123.0.12:100
+    route-target import 80100:100
+    route-target export 80100:100
+```
+
+Коммутатор Lea-3 настраивается идентичным образом. Конфигурация представлена ниже.
+<details>
+
+<summary> Конфигурация VxLAN/EVPN на коммутаторе Leaf-3 </summary>
+
+```sh
+nv overlay evpn
+feature vn-segment-vlan-based
+feature nv overlay
+ 
+vlan 100
+  vn-segment 80100
+  
+router bgp 4200100033
+  template peer Spines_Overlay
+    remote-as 4200100000
+    update-source loopback1
+    ebgp-multihop 3
+    address-family l2vpn evpn
+      send-community
+      send-community extended
+  neighbor 10.123.0.41
+    inherit peer Spines_Overlay
+    description Spine-1
+  
+interface nve1
+  no shutdown
+  host-reachability protocol bgp
+  source-interface loopback1
+  member vni 80100
+    ingress-replication protocol bgp
+
+evpn
+  vni 80100 l2
+    rd 10.123.0.32:100
+    route-target import 80100:100
+    route-target export 80100:100
+```
+</details>
+
+##### 1.6. Обеспечение L2 связности между коммутатором Leaf-3 и Server-2.
+На последнем этапе обеспечим связность между коммутатором Leaf-3 и Server-2. Соответствующие настройки представлены ниже.
+Конфигурация Leaf-3
+```sh
+interface Ethernet1/7
+  description Server-2
+  switchport mode trunk
+  no shutdown
+```
+
+Конфигурация Server-2
+```sh
+hostname Server-1
+  
+interface Ethernet0/0
+  no shutdown
+
+interface Ethernet0/0.100
+ encapsulation dot1Q 100
+ ip address 10.123.100.12 255.255.255.0
+```
+
+##### 1.7. Проверка работоспособности VPC.
+Перед тем, как проверять работу VxLAN/EVPN проверим, что у нас коммутаторы Leaf-1 и Leaf-2 собрались в VPC пару.
+1. Проверка VPC на коммутаторе Leaf-1
+```sh
+Leaf-1# show vpc
+Legend:
+                (*) - local vPC is down, forwarding via vPC peer-link
+
+vPC domain id                     : 10
+Peer status                       : peer adjacency formed ok
+vPC keep-alive status             : peer is alive
+Configuration consistency status  : success
+Per-vlan consistency status       : success
+Type-2 consistency status         : success
+vPC role                          : primary
+Number of vPCs configured         : 1
+Peer Gateway                      : Disabled
+Dual-active excluded VLANs        : -
+Graceful Consistency Check        : Enabled
+Auto-recovery status              : Disabled
+Delay-restore status              : Timer is off.(timeout = 30s)
+Delay-restore SVI status          : Timer is off.(timeout = 10s)
+Operational Layer3 Peer-router    : Disabled
+Virtual-peerlink mode             : Disabled
+
+vPC Peer-link status
+---------------------------------------------------------------------
+id    Port   Status Active vlans
+--    ----   ------ -------------------------------------------------
+1     Po1    up     1,100
+
+
+vPC status
+----------------------------------------------------------------------------
+Id    Port          Status Consistency Reason                Active vlans
+--    ------------  ------ ----------- ------                ---------------
+10    Po100         up     success     success               1,100
+
+
+
+
+Please check "show vpc consistency-parameters vpc <vpc-num>" for the
+consistency reason of down vpc and for type-2 consistency reasons for
+any vpc.
+```
+
+2. Проверка VPC на коммутаторе Leaf-2
+```sh
+Leaf-2# show vpc
+Legend:
+                (*) - local vPC is down, forwarding via vPC peer-link
+
+vPC domain id                     : 10
+Peer status                       : peer adjacency formed ok
+vPC keep-alive status             : peer is alive
+Configuration consistency status  : success
+Per-vlan consistency status       : success
+Type-2 consistency status         : success
+vPC role                          : secondary
+Number of vPCs configured         : 1
+Peer Gateway                      : Disabled
+Dual-active excluded VLANs        : -
+Graceful Consistency Check        : Enabled
+Auto-recovery status              : Disabled
+Delay-restore status              : Timer is off.(timeout = 30s)
+Delay-restore SVI status          : Timer is off.(timeout = 10s)
+Operational Layer3 Peer-router    : Disabled
+Virtual-peerlink mode             : Disabled
+
+vPC Peer-link status
+---------------------------------------------------------------------
+id    Port   Status Active vlans
+--    ----   ------ -------------------------------------------------
+1     Po1    up     1,100
+
+
+vPC status
+----------------------------------------------------------------------------
+Id    Port          Status Consistency Reason                Active vlans
+--    ------------  ------ ----------- ------                ---------------
+10    Po100         up     success     success               1,100
+
+
+
+
+Please check "show vpc consistency-parameters vpc <vpc-num>" for the
+consistency reason of down vpc and for type-2 consistency reasons for
+any vpc.
+```
+
+Как мы видим, коммутаторы успешно собраны в VPC пару.
+
+##### 1.8. Проверка работоспособности VxLAN EVPN
+После настройки L2 связности с использованием технологий VxLAN EVPN проверим, что у нас VxLAN туннель работает, а EVPN маршруты передаются. В качестве примера, проверим работоспособность маршрутизации VxLAN EVPN со стороны коммутатора Leaf-3, чтобы продемонстрировать, как Leaf-3 видит коммутаторы в VPC паре.
+
+1. Проверка состояния NVE интерфейса (VxLAN туннеля).
+ ```sh
+Leaf-3# show nve peers
+Interface Peer-IP                                 State LearnType Uptime   Router-Mac
+--------- --------------------------------------  ----- --------- -------- -----------------
+nve1      10.123.0.10                             Up    CP        00:26:40 n/a
+
+```
+Как мы видим, Leaf-3 видит коммутаторы в VPC паре через их общий (secondary) IP-адрес. 
+
+2. Более подробная информация об nve интерфейсе.
+ ```sh
+Leaf-3# show nve vni
+Codes: CP - Control Plane        DP - Data Plane
+       UC - Unconfigured         SA - Suppress ARP
+       SU - Suppress Unknown Unicast
+       Xconn - Crossconnect
+       MS-IR - Multisite Ingress Replication
+
+Interface VNI      Multicast-group   State Mode Type [BD/VRF]      Flags
+--------- -------- ----------------- ----- ---- ------------------ -----
+nve1      80100    UnicastBGP        Up    CP   L2 [100]
+```
+Из вывода команды видим, что информацию об удаленных мак адресах Leaf-3 получает через Control Plane (через BGP) с использованием ingress репликации. Также из вывода команды видно, что nve интерфейс в состоянии UP и информацию о VNI.
+
+3. Просмотр статуса VxLAN интерфейса
+ ```sh
+Leaf-3# show vxlan interface
+Interface       Vlan    VPL Ifindex     LTL             HW VP
+=========       ====    ===========     ===             =====
+Eth1/7          100     0x530647fa      0x1801          2050
+```
+
+4. Проверка общей (суммарной) информации об установлении BGP соседства в адресном семействе L2VPN EVPN.
+ ```sh
+Leaf-3# show bgp l2vpn evpn summary
+BGP summary information for VRF default, address family L2VPN EVPN
+BGP router identifier 10.123.0.31, local AS number 4200100033
+BGP table version is 20, L2VPN EVPN config peers 1, capable peers 1
+6 network entries and 6 paths using 1224 bytes of memory
+BGP attribute entries [5/860], BGP AS path entries [1/10]
+BGP community entries [0/0], BGP clusterlist entries [0/0]
+
+Neighbor        V    AS MsgRcvd MsgSent   TblVer  InQ OutQ Up/Down  State/PfxRcd
+10.123.0.41     4 4200100000
+                             44      39       20    0    0 00:31:31 2
+
+```
+
+Как мы видим, BGP соседство установлено и они обмениваются EVPN маршрутами.
+
+5. Просмотр таблицы BGP адресного семейства L2VPN EVPN.
+ ```sh
+Leaf-3# show bgp l2vpn evpn
+BGP routing table information for VRF default, address family L2VPN EVPN
+BGP table version is 20, Local Router ID is 10.123.0.31
+Status: s-suppressed, x-deleted, S-stale, d-dampened, h-history, *-valid, >-best
+Path type: i-internal, e-external, c-confed, l-local, a-aggregate, r-redist, I-i
+njected
+Origin codes: i - IGP, e - EGP, ? - incomplete, | - multipath, & - backup, 2 - b
+est2
+
+   Network            Next Hop            Metric     LocPrf     Weight Path
+Route Distinguisher: 10.123.0.12:100
+*>e[2]:[0]:[0]:[48]:[aabb.cc00.5000]:[0]:[0.0.0.0]/216
+                      10.123.0.10                                    0 420010000
+0 4200100011 i
+*>e[3]:[0]:[32]:[10.123.0.10]/88
+                      10.123.0.10                                    0 420010000
+0 4200100011 i
+
+Route Distinguisher: 10.123.0.32:100    (L2VNI 80100)
+*>e[2]:[0]:[0]:[48]:[aabb.cc00.5000]:[0]:[0.0.0.0]/216
+                      10.123.0.10                                    0 420010000
+0 4200100011 i
+*>l[2]:[0]:[0]:[48]:[aabb.cc00.6000]:[0]:[0.0.0.0]/216
+                      10.123.0.32                       100      32768 i
+*>e[3]:[0]:[32]:[10.123.0.10]/88
+                      10.123.0.10                                    0 420010000
+0 4200100011 i
+*>l[3]:[0]:[32]:[10.123.0.32]/88
+                      10.123.0.32                       100      32768 i
+
+```
+Из вывода команды видно, чте в таблице BGP есть EVPN маршруты до удаленных серверов (маршруты 2 типа) и маршруты до удаленных VTEP (маршруты 3 типа). Также из вывода команды видно, что мак-адрес удаленного сервера доступен за общим IP-адресом VPC пары.
+
+6. Просмотр L2 маршрутов EVPN.
+ ```sh
+Leaf-3# show l2route evpn mac all
+
+Flags -(Rmac):Router MAC (Stt):Static (L):Local (R):Remote (V):vPC link
+(Dup):Duplicate (Spl):Split (Rcv):Recv (AD):Auto-Delete (D):Del Pending
+(S):Stale (C):Clear, (Ps):Peer Sync (O):Re-Originated (Nho):NH-Override
+(Pf):Permanently-Frozen, (Orp): Orphan
+
+Topology    Mac Address    Prod   Flags         Seq No     Next-Hops
+
+----------- -------------- ------ ------------- ---------- ---------------------------------------
+100         aabb.cc00.5000 BGP    Rcv           0          10.123.0.10 (Label: 80100)
+100         aabb.cc00.6000 Local  L,            0          Eth1/7
+```
+Из вывода команды видно, что мак адрес Server-2 выучен локально, а удаленный мак адрес получен от удаленных VTEP, собранных в VPC пару.
+
+### 2. Проверка доступности серверов.
+После настройки VxLAN EVPN проверим, что сервера "видят" друг друга. Для проверки доступности сетевых узлов будем использовать протокол ICMP, а именно команду ping, запускаемую на серверах ЦОД. Ниже представлен пример доступности всех серверов. Проверка проводилась с сервера 2 (Server-2).
+
+```sh
+Server-2#ping 10.123.100.10
+Type escape sequence to abort.
+Sending 5, 100-byte ICMP Echos to 10.123.100.10, timeout is 2 seconds:
+!!!!!
+Success rate is 100 percent (5/5), round-trip min/avg/max = 13/22/59 ms
+```
+
+Из результатов видно, что удаленный сервер, находящийся за VPC парой, доступен. Протестируем отказоустойчивость, сымитировав поломку коммутатора Leaf-1 (см. рисунок ниже).
+![alt-текст](https://github.com/ilya0693/Design-DC-Networks/blob/main/Homework7/%D0%A1%D1%85%D0%B5%D0%BC%D0%B0%20%D1%81%D0%B5%D1%82%D0%B8%20%D0%A6%D0%9E%D0%94%20(%D0%94%D0%971)%20v1.0-VPC%20Overlay.drawio.png "Поломка Leaf-1")
+
+
+
+С полной версией конфигурации каждого сетевого оборудования можно ознакомиться [здесь](https://github.com/ilya0693/Design-DC-Networks/tree/main/Homework5/Configs).
