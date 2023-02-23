@@ -65,7 +65,7 @@ show vpc brief
 
 ### 1. Конфигурация Undarlay, VPC и VxLAN EVPN (L2 VNI).
 
-В данной домашней работе нам необходимо объединить коммутаторы Leaf-1 и Leaf-2 в VPC пару и обеспечить L3 связность созданной VPC пары с коммутатором L3. После обеспечения L3 связности следующей задачей необходимо обеспечить L2 связность между серверами с использованием технологий VxLAN/EVPN. Схема дизайна Underlay и Overlay сети представлена на рисунках ниже. 
+В данной домашней работе нам необходимо объединить коммутаторы Leaf-1 и Leaf-2 в VPC пару и обеспечить L3 связность созданной VPC пары с коммутатором L3. После обеспечения L3 связности следующей задачей необходимо обеспечить L2 связность между серверами с использованием технологий VxLAN/EVPN. Для простоты изучения технологий, в данной домашней работе будет использоваться только L2VNI. Схема дизайна Underlay и Overlay сети представлена на рисунках ниже. 
 
 ![alt-текст](https://github.com/ilya0693/Design-DC-Networks/blob/main/Homework7/%D0%A1%D1%85%D0%B5%D0%BC%D0%B0%20%D1%81%D0%B5%D1%82%D0%B8%20%D0%A6%D0%9E%D0%94%20(%D0%94%D0%971)%20v1.0-VPC.drawio.png "Схема Underlay ЦОД")
 Рисунок 1 - Схема Underlay ЦОД
@@ -75,4 +75,216 @@ show vpc brief
 Рассмотрим подробно конфигурацию сетевого оборудования. Следует акцентировать внимание, что, так как дизайн претерпел значительные изменения, ниже будет рассмотрена конфигурация каждого оборудования. Основной упор, при рассмотрении конфигурации, будет акцентирован на VPC, остальная конфигурация подробно рассматриваться не будет, так как была рассмотрена в предыдущих домашних работах.
 
 ##### 1.1. Базовая конфигурация и Underlay маршрутизация коммутатора Spine-1
+```sh
+hostname Spine-1
+  
+feature bgp
 
+no ip domain-lookup
+ip domain-name dc.lab
+
+ip prefix-list LOOPBACKS seq 5 permit 10.123.0.0/24 eq 32
+ip as-path access-list LEAFS_AS seq 10 permit "^42001000[1-9]{2}$"
+  
+route-map LEAFS_AS permit 10
+  match as-path LEAFS_AS
+route-map REDISTRIBUTE_CONNECTED permit 10
+  match ip address prefix-list LOOPBACKS
+  
+interface Ethernet1/1
+  description to_Leaf-1
+  no switchport
+  ip address 10.123.1.0/31
+  no shutdown
+
+interface Ethernet1/2
+  description to_Leaf-2
+  no switchport
+  ip address 10.123.1.4/31
+  no shutdown
+
+interface Ethernet1/3
+  description to_Leaf-3
+  no switchport
+  ip address 10.123.1.8/31
+  no shutdown
+
+interface loopback0
+  description RID
+  ip address 10.123.0.41/32
+  
+router bgp 4200100000
+  router-id 10.123.0.41
+  bestpath as-path multipath-relax
+  address-family ipv4 unicast
+    redistribute direct route-map REDISTRIBUTE_CONNECTED
+    maximum-paths 64
+  neighbor 10.123.1.0/24 remote-as route-map LEAFS_AS
+    timers 3 9
+    address-family ipv4 unicast
+        
+boot nxos bootflash:nxos.9.3.10.bin
+  
+cli alias name wr copy running-config startup-config
+```
+
+##### 1.2. Базовая конфигурация и Underlay маршрутизация коммутаторов Leaf
+Конфигурация коммутатора Leaf-1
+```sh
+hostname Leaf-1
+
+feature bgp
+feature interface-vlan
+
+no ip domain-lookup
+ip domain-name dc.lab
+
+vlan 100
+  name Servers
+
+ip prefix-list LOOPBACKS seq 5 permit 10.123.0.0/24 eq 32
+
+route-map REDISTRIBUTE_CONNECTED permit 10
+  match ip address prefix-list LOOPBACKS
+  
+interface Ethernet1/1
+  description to_Spine-1
+  no switchport
+  ip address 10.123.1.1/31
+  no shutdown
+  
+interface loopback0
+  description RID
+  ip address 10.123.0.11/32
+
+interface loopback1
+  description VTEP
+  ip address 10.123.0.12/32
+  
+boot nxos bootflash:nxos.9.3.10.bin
+
+cli alias name wr copy running-config startup-config
+  
+router bgp 4200100011
+  router-id 10.123.0.11
+  bestpath as-path multipath-relax
+  reconnect-interval 12
+  address-family ipv4 unicast
+    redistribute direct route-map REDISTRIBUTE_CONNECTED
+    maximum-paths 64
+  template peer Spines_Underlay
+    remote-as 4200100000
+    timers 3 9
+    address-family ipv4 unicast
+  neighbor 10.123.1.0
+    inherit peer Spines_Underlay
+    description Spine-1
+```
+
+Конфигурация коммутатора Leaf-2
+```sh
+hostname Leaf-2
+
+feature bgp
+feature interface-vlan
+
+no ip domain-lookup
+ip domain-name dc.lab
+
+vlan 100
+  name Servers
+
+ip prefix-list LOOPBACKS seq 5 permit 10.123.0.0/24 eq 32
+
+route-map REDISTRIBUTE_CONNECTED permit 10
+  match ip address prefix-list LOOPBACKS
+  
+interface Ethernet1/1
+  description to_Spine-1
+  no switchport
+  ip address 10.123.1.5/31
+  no shutdown
+  
+interface loopback0
+  description RID
+  ip address 10.123.0.21/32
+
+interface loopback1
+  description VTEP
+  ip address 10.123.0.22/32
+  
+boot nxos bootflash:nxos.9.3.10.bin
+
+cli alias name wr copy running-config startup-config
+  
+router bgp 4200100011
+  router-id 10.123.0.21
+  bestpath as-path multipath-relax
+  reconnect-interval 12
+  address-family ipv4 unicast
+    redistribute direct route-map REDISTRIBUTE_CONNECTED
+    maximum-paths 64
+  template peer Spines_Underlay
+    remote-as 4200100000
+    timers 3 9
+    address-family ipv4 unicast
+  neighbor 10.123.1.4
+    inherit peer Spines_Underlay
+    description Spine-1
+```
+Следует акцентировать внимание, что, BGP на коммутаторе Leaf-2 настраивается в той же автономной системе, что и коммутатор Leaf-1, так как между этими коммутаторами предполагается создание VPC пары. 
+Коммутатор Leaf-3 настраивается также, как и коммутаторы Leaf-1 и Leaf-2. Настройки ниже.
+<details>
+<summary> Конфигурация коммутатора Leaf-3 </summary>
+
+```sh
+hostname Leaf-3
+
+feature bgp
+feature interface-vlan
+
+no ip domain-lookup
+ip domain-name dc.lab
+
+vlan 100
+  name Servers
+  
+ip prefix-list LOOPBACKS seq 5 permit 10.123.0.0/24 eq 32
+
+route-map REDISTRIBUTE_CONNECTED permit 10
+  match ip address prefix-list LOOPBACKS
+  
+interface Ethernet1/1
+  description to_Spine-1
+  no switchport
+  ip address 10.123.1.9/31
+  no shutdown
+
+interface loopback0
+  description RID
+  ip address 10.123.0.31/32
+
+interface loopback1
+  description VTEP
+  ip address 10.123.0.32/32
+  
+boot nxos bootflash:nxos.9.3.10.bin
+
+cli alias name wr copy running-config startup-config
+  
+router bgp 4200100033
+  router-id 10.123.0.31
+  bestpath as-path multipath-relax
+  reconnect-interval 12
+  address-family ipv4 unicast
+    redistribute direct route-map REDISTRIBUTE_CONNECTED
+    maximum-paths 64
+  template peer Spines_Underlay
+    remote-as 4200100000
+    timers 3 9
+    address-family ipv4 unicast
+  neighbor 10.123.1.8
+    inherit peer Spines_Underlay
+    description Spine-1
+```
+</details>
