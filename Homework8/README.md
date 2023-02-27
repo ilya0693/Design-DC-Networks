@@ -16,7 +16,7 @@
 
 <summary> Схема стенда </summary>
   
-![alt-текст](https://github.com/ilya0693/Design-DC-Networks/blob/main/Homework6/%D0%A1%D1%85%D0%B5%D0%BC%D0%B0%20%D1%81%D1%82%D0%B5%D0%BD%D0%B4%D0%B0%20EVE-NG.png "Схема стенда EVE-NG")
+![alt-текст](https://github.com/ilya0693/Design-DC-Networks/blob/main/Homework8/EVE_NG%20Scheme.png "Схема стенда EVE-NG")
 
 </details>
 
