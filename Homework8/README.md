@@ -26,32 +26,60 @@
 
 Конфигурация **_"Server-1"_**
 ```sh
-set pcname Server-1
-ip 10.123.100.10 255.255.255.0 10.123.100.1
-save
+hostname Server-1
+ !
+interface Ethernet0/0
+ no ip address
+!
+interface Ethernet0/0.100
+ encapsulation dot1Q 100
+ ip address 10.123.100.10 255.255.255.128
+!
+ip route 0.0.0.0 0.0.0.0 192.168.100.1
 ```
 
-Конфигурация VPCS **_"Server-2"_**
+Конфигурация **_"Server-2"_**
 ```sh
-set pcname Server-2
-ip 10.123.100.11 255.255.255.0 10.123.100.1
-save
+hostname Server-2
+ !
+interface Ethernet0/0
+ no ip address
+!
+interface Ethernet0/0.100
+ encapsulation dot1Q 100
+ ip address 10.123.100.11 255.255.255.128
+!
+ip route 0.0.0.0 0.0.0.0 192.168.100.1
 ```
   
-Конфигурация VPCS **_"Server-3"_**
+Конфигурация **_"Server-3"_**
 
 ```sh
-set pcname Server-3
-ip 10.123.200.10 255.255.255.0 10.123.200.1
-save
+hostname Server-3
+ !
+interface Ethernet0/0
+ no ip address
+!
+interface Ethernet0/0.300
+ encapsulation dot1Q 300
+ ip address 10.123.253.10 255.255.255.0
+!
+ip route 0.0.0.0 0.0.0.0 10.123.253.1
 ```
 
-Конфигурация VPCS **_"Server-4"_**
+Конфигурация **_"Server-4"_**
 
 ```sh
-set pcname Server-4
-ip 10.123.250.10 255.255.255.0 10.123.250.1
-save
+hostname Server-4
+ !
+interface Ethernet0/0
+ no ip address
+!
+interface Ethernet0/0.400
+ encapsulation dot1Q 400
+ ip address 10.123.254.10 255.255.255.0
+!
+ip route 0.0.0.0 0.0.0.0 10.123.254.1
 ```
 </details>
 
@@ -67,9 +95,6 @@ feature interface-vlan
 
 no ip domain-lookup
 ip domain-name dc.lab
-
-vlan 100
-  name Servers
   
 route-map REDISTRIBUTE_CONNECTED permit 10
   match interface loopback0 loopback1
