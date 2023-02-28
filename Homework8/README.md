@@ -337,11 +337,21 @@ L1-L3 схема сети ЦОД
 ![alt-текст](https://github.com/ilya0693/Design-DC-Networks/blob/main/Homework8/%D0%A1%D1%85%D0%B5%D0%BC%D0%B0%20%D1%81%D0%B5%D1%82%D0%B8%20%D0%A6%D0%9E%D0%94%20(%D0%94%D0%971)%20v1.0-Overlay%2BFirewall.drawio.png "Схема Overlay ЦОД")
 Схема Overlay ЦОД
 
-Рассмотрим подробно конфигурацию VxLAN/EVPN одного из Leaf и Spine коммутатора ЦОД.
+В рамках данной домашней работы нам необходимо:
+* обеспечить L2 связность между Server-1 и Server-2. Данные сервера будут находиться в одном Tenant'е и широковещательном домене.
+* обеспечить L3 связность между Server-3 и Server-4. Данные сервера будут находиться в одном Tenant'е, но в разных широковещательных доменах.
+* обеспечить связность между Server-1/Server-2 и Server-3/Server-4 через Firewall. Каждый Tenant должен быть доступен через суммарный префикс.
+
+Несколько примечаний по выполнению ДЗ:
+* Для решения данных задач будет использоваться технология VxLAN/EVPN. В рамках данного ДЗ межсетевое взаимодействие между Server-1 и Server-3 или между Server-2 и Server-4 рассматриваться не будет, так как для их взаимодействия необходимо настраивать VRF-Leaking, что выходит за рамки данного ДЗ.
+* В качестве серверов и Firewall'а используются образы Cisco IOL. 
+* Фильтрация трафика в данном ДЗ рассматриваться и выполняться не будет.
+
+Рассмотрим подробно конфигурацию VxLAN/EVPN и способ обеспечения связности 2х разных Tenant'ов.
 
 ##### 1.1. Пример конфигурации EVPN на коммутаторах Spine
 
-Вернемся на шаг назад и вспомним, какие изменения вносятся со стороны Spine коммутатора. В данной домашней работе подробое описание команд/секций рассматриваться не будет, так как это уже сделано в предыдущей домашней работе. В данном подразделе будет приведен лишь синтаксис конфигурации (смотрите ниже).
+В данной ДЗ подробое описание команд/секций рассматриваться не будет, так как это уже сделано ранее. В данном подразделе будет приведен лишь синтаксис конфигурации (смотрите ниже).
 
 ```sh
 nv overlay evpn
@@ -364,9 +374,7 @@ router bgp 4200100000
 
 ##### 1.2. Пример конфигурации VxLAN/EVPN на коммутаторе _"Leaf-1"_
 
-В данном подразделе рассмотрим конфигурацию Leaf коммутаторов более подробно. Что-то будет повторяться из предыдущей домашней работы, остальная конфигурация - новвя, так как L3VNI еще не настраивали.
-
-Первым шагом включаем функционал EVPN, VxLAN, возможность ассоциировать VLAN с VNI и fabric forwarding. Функционал fabric forwarding нужен для работы L3VNI.
+В данном подразделе рассмотрим конфигурацию Leaf коммутаторов более подробно. Первым шагом включаем функционал EVPN, VxLAN, возможность ассоциировать VLAN с VNI и fabric forwarding. Функционал fabric forwarding нужен для работы L3VNI.
 ```sh
 nv overlay evpn
 feature vn-segment-vlan-based
@@ -374,13 +382,20 @@ feature nv overlay
 feature fabric forwarding
 ```
 
-Ассоциируем VLAN'ы с VNI. В данной домашней работе для VNI зарезервировано значение 8XXXX, где XXXX - номер VLAN'а. Также создадим VLAN для L3VNI.
+Ассоциируем VLAN'ы с VNI. В данной домашней работе для VNI зарезервировано значение 8XXXX, где XXXX - номер VLAN'а. Также создадим 2 VLAN'а для L3VNI, тем самым поместив их в разные Tenant'ы.
 ```sh
 vlan 100
+  name Servers_v100->VRF_"A"
   vn-segment 80100
+vlan 300
+  name Servers_v300->VRF_"B"
+  vn-segment 80300
 vlan 900
-  name L3VNI
+  name L3VNI_for_VRF_"A"
   vn-segment 80900
+vlan 910
+  name L3VNI_for_VRF_"B"
+  vn-segment 80910
 ```
 
 Настроим BGP в адресном семействе l2vpn evpn, тем самым создав Overlay сеть.
@@ -398,17 +413,28 @@ router bgp 4200100011
     description Spine-1
 ```
 
-Сконфигурируем nve интерфейс для работы VxLAN.
+Следующим шагом создаим два VRF, предназначенные для L3VNI, и настроим в созданном нами VRF RD и RT в адресном семействе ipv4.
 ```sh
-interface nve1
-  no shutdown
-  host-reachability protocol bgp
-  source-interface loopback1
-  member vni 80100
-    ingress-replication protocol bgp
+vrf context A
+  vni 80900
+  rd 10.123.0.12:900
+  address-family ipv4 unicast
+    route-target import 80900:900
+    route-target import 80900:900 evpn
+    route-target export 80900:900
+    route-target export 80900:900 evpn
+
+vrf context B
+  vni 80910
+  rd 10.123.0.12:910
+  address-family ipv4 unicast
+    route-target import 80910:910
+    route-target import 80910:910 evpn
+    route-target export 80910:910
+    route-target export 80910:910 evpn
 ```
 
-Сконфигурируем evpn, укажем, что у нас используется L2 VNI, настроим RD и RT для нашего VNI. Так как у нас используется eBGP, рекомендуется настраивать RD и RT вручную, чтобы они были одинаковыми в разных AS.
+Так как между Server-1 и Server-2 используется L2VNI, сконфигурируем секцию evpn. Укажем, что у нас используется L2 VNI, настроим RD и RT для нашего VNI. Так как у нас используется eBGP, рекомендуется настраивать RD и RT вручную, чтобы они были одинаковыми в разных AS.
 ```sh
 evpn
   vni 80100 l2
@@ -417,42 +443,66 @@ evpn
     route-target export 80100:100
 ```
 
-Следующим шагом создаим VLAN 900 и VRF, предназначенные для L3VNI, и настроем в созданном нами VRF RD и RT в адресном семействе ipv4.
-```sh
-vrf context L3VNI
-  vni 80900
-    rd 10.123.0.12:900
-    address-family ipv4 unicast
-      route-target import 80900:900
-      route-target import 80900:900 evpn
-      route-target export 80900:900
-      route-target export 80900:900 evpn
-```
-
 Создадим SVI интерфейс, ассоциируем данный SVI с созданным нами VRF и включим функционал anycast-gateway. Также настроим общий мак адрес для anycast gateway.
 ```sh
 fabric forwarding anycast-gateway-mac 000a.000b.000c
 
 interface vlan 100
-  vrf member L3VNI
-  ip address 10.123.100.1/24
+  vrf member A
+  ip address 10.123.100.1/25
   fabric forwarding mode anycast-gateway
+  no shutdown
+  
+interface vlan 300
+  vrf member B
+  ip address 10.123.253.1/24
+  fabric forwarding mode anycast-gateway
+  no shutdown
 ```
 
-Создаем SVI интерфейс для L3VNI. На нем не настраивается IP адрес, только форвардинг трафика.
+Создадим SVI интерфейс для L3VNI обоих Tenant'ов. На нем не настраивается IP адрес, только форвардинг трафика.
 ```sh
 interface vlan 900
-  vrf member L3VNI
+  vrf member A
   ip forward
+  no shutdown
+  
+interface vlan 910
+  vrf member B
+  ip forward
+  no shutdown
 ```
 
-На NVE интерфейс добавляем наш L3VNI.
+Сконфигурируем nve интерфейс для работы VxLAN (как L2VNI, так L3VNI).
 ```sh
 interface nve1
+  no shutdown
+  host-reachability protocol bgp
+  source-interface loopback1
+  member vni 80100
+    ingress-replication protocol bgp
+  member vni 80300
+    ingress-replication protocol bgp
   member vni 80900 associate-vrf
+  member vni 80910 associate-vrf
 ```
 
-На остальных коммутаторах Leaf VxLAN EVPN настраивается идентичным образом, с небольшими отличиями. С конфигурацией коммутаторов можно ознакомиться ниже.
+В завершении пробросим VLAN 100 и VLAN 300 до соответствующих серверов.
+```sh
+interface Ethernet1/6
+  switchport
+  description Server-1
+  switchport mode trunk
+  switchport trunk allowed vlan 100
+  
+interface Ethernet1/7
+  switchport
+  description Server-3
+  switchport mode trunk
+  switchport trunk allowed vlan 300
+```
+
+На остальных Leaf коммутаторах (в том числе и Border_Leaf) VxLAN EVPN настраивается идентичным образом, с небольшими отличиями. С конфигурацией коммутаторов можно ознакомиться ниже.
 
 <details>
 
@@ -465,10 +515,17 @@ feature nv overlay
 feature fabric forwarding
  
 vlan 100
+  name Servers_v100->VRF_"A"
   vn-segment 80100
+vlan 400
+  name Servers_v400->VRF_"B"
+  vn-segment 80400
 vlan 900
-  name L3VNI
+  name L3VNI_for_VRF_"A"
   vn-segment 80900
+vlan 910
+  name L3VNI_for_VRF_"B"
+  vn-segment 80910
   
 router bgp 4200100022
   template peer Spines_Overlay
@@ -481,6 +538,54 @@ router bgp 4200100022
   neighbor 10.123.0.41
     inherit peer Spines_Overlay
     description Spine-1
+
+vrf context A
+  vni 80900
+  rd 10.123.0.22:900
+  address-family ipv4 unicast
+    route-target import 80900:900
+    route-target import 80900:900 evpn
+    route-target export 80900:900
+    route-target export 80900:900 evpn
+
+vrf context B
+  vni 80910
+  rd 10.123.0.22:910
+  address-family ipv4 unicast
+    route-target import 80910:910
+    route-target import 80910:910 evpn
+    route-target export 80910:910
+    route-target export 80910:910 evpn
+
+evpn
+  vni 80100 l2
+    rd 10.123.0.22:100
+    route-target import 80100:100
+    route-target export 80100:100
+
+fabric forwarding anycast-gateway-mac 000a.000b.000c
+
+interface vlan 100
+  vrf member A
+  ip address 10.123.100.1/25
+  fabric forwarding mode anycast-gateway
+  no shutdown
+  
+interface vlan 400
+  vrf member B
+  ip address 10.123.254.1/24
+  fabric forwarding mode anycast-gateway
+  no shutdown
+  
+interface vlan 900
+  vrf member A
+  ip forward
+  no shutdown
+  
+interface vlan 910
+  vrf member B
+  ip forward
+  no shutdown
   
 interface nve1
   no shutdown
@@ -488,41 +593,28 @@ interface nve1
   source-interface loopback1
   member vni 80100
     ingress-replication protocol bgp
-
-evpn
-  vni 80100 l2
-    rd 10.123.0.22:100
-    route-target import 80100:100
-    route-target export 80100:100
-  
-vrf context L3VNI
-  vni 80900
-    rd 10.123.0.22:900
-    address-family ipv4 unicast
-      route-target import 80900:900
-      route-target import 80900:900 evpn
-      route-target export 80900:900
-      route-target export 80900:900 evpn
-  
-fabric forwarding anycast-gateway-mac 000a.000b.000c
-
-interface vlan 100
-  vrf member L3VNI
-  ip address 10.123.100.1/24
-  fabric forwarding mode anycast-gateway
-  
-interface vlan 900
-  vrf member L3VNI
-  ip forward
-  
-interface nve1
+  member vni 80400
+    ingress-replication protocol bgp
   member vni 80900 associate-vrf
+  member vni 80910 associate-vrf
+  
+interface Ethernet1/6
+  switchport
+  description Server-2
+  switchport mode trunk
+  switchport trunk allowed vlan 100
+  
+interface Ethernet1/7
+  switchport
+  description Server-4
+  switchport mode trunk
+  switchport trunk allowed vlan 400
 ```
 </details>
 
 <details>
 
-<summary> Конфигурация VxLAN EVPN на коммутаторе Leaf-3 </summary>
+<summary> Конфигурация VxLAN EVPN на коммутаторе Border_Leaf-1 </summary>
 
 ```sh
 nv overlay evpn
@@ -530,13 +622,12 @@ feature vn-segment-vlan-based
 feature nv overlay
 feature fabric forwarding
  
-vlan 200
-  vn-segment 80200
-vlan 300
-  vn-segment 80300
 vlan 900
-  name L3VNI
+  name L3VNI_for_VRF_"A"
   vn-segment 80900
+vlan 910
+  name L3VNI_for_VRF_"B"
+  vn-segment 80910
   
 router bgp 4200100033
   template peer Spines_Overlay
@@ -549,60 +640,109 @@ router bgp 4200100033
   neighbor 10.123.0.41
     inherit peer Spines_Overlay
     description Spine-1
+
+vrf context A
+  vni 80900
+  rd 10.123.0.32:900
+  address-family ipv4 unicast
+    route-target import 80900:900
+    route-target import 80900:900 evpn
+    route-target export 80900:900
+    route-target export 80900:900 evpn
+
+vrf context B
+  vni 80910
+  rd 10.123.0.32:910
+  address-family ipv4 unicast
+    route-target import 80910:910
+    route-target import 80910:910 evpn
+    route-target export 80910:910
+    route-target export 80910:910 evpn
+
+interface vlan 900
+  vrf member A
+  ip forward
+  no shutdown
+  
+interface vlan 910
+  vrf member B
+  ip forward
+  no shutdown
   
 interface nve1
   no shutdown
   host-reachability protocol bgp
   source-interface loopback1
-  member vni 80200
-    ingress-replication protocol bgp
-  member vni 80300
-    ingress-replication protocol bgp
-
-evpn
-  vni 80200 l2
-    rd 10.123.0.32:200
-    route-target import 80200:200
-    route-target export 80200:200
-  vni 80300 l2
-    rd 10.123.0.32:300
-    route-target import 80300:300
-    route-target export 80300:300
-  
-vrf context L3VNI
-  vni 80900
-    rd 10.123.0.32:900
-    address-family ipv4 unicast
-      route-target import 80900:900
-      route-target import 80900:900 evpn
-      route-target export 80900:900
-      route-target export 80900:900 evpn
-  
-fabric forwarding anycast-gateway-mac 000a.000b.000c
-
-interface vlan 200
-  vrf member L3VNI
-  ip address 10.123.200.1/24
-  fabric forwarding mode anycast-gateway
-  
-interface vlan 300
-  vrf member L3VNI
-  ip address 10.123.250.1/24
-  fabric forwarding mode anycast-gateway
-  
-interface vlan 900
-  vrf member L3VNI
-  ip forward
-  
-interface nve1
   member vni 80900 associate-vrf
+  member vni 80910 associate-vrf
 ```
 </details>
 
 Следует отметить, что у нас настроен симметричный L3VNI, так как VLAN L3VNI распространяется на каждый Leaf коммутатор.
 
+##### 1.3. Конфигурация межсетевого взаимодействия между разными Tenant'ами.
+
+Для обеспечения связности между разными Tenant'ами необходимо донастроить наш Border_Leaf коммутатор и настроить Firewall. Для начала, рассмотрим настройки Border_Leaf.
+
+На 1 шаге необходимо настроить стыковочные интерфейсы между BR и FW. В нашем случае будут использоваться стыковочные сабинтерфейсы. Каждый сабинтерфейс назначается в соответствующий VRF.
+ ```sh
+interface ethernet 1/7
+  no shutdown
+  no switchport
+
+interface Ethernet1/7.3010
+  encapsulation dot1q 3010
+  vrf member A
+  ip address 10.123.1.11/31
+  no shutdown
+
+interface Ethernet1/7.3011
+  encapsulation dot1q 3011
+  vrf member B
+  ip address 10.123.1.13/31
+  no shutdown
+```
+Далее необходимо настроить BGP  сессии в адресном семействе ipv4 unicast между BR и FW
+```sh
+router bgp 4200100033
+  vrf A
+    address-family ipv4 unicast
+      aggregate-address 10.123.100.0/24 summary-only
+    neighbor 10.123.1.10
+      remote-as 4200100055
+      local-as 4200100034 no-prepend replace-as
+      address-family ipv4 unicast
+   vrf B
+    address-family ipv4 unicast
+      aggregate-address 10.123.252.0/22 summary-only
+    neighbor 10.123.1.12
+      remote-as 4200100055
+      local-as 4200100035 no-prepend replace-as
+      address-family ipv4 unicast
+```
+На этом конфигурацию BR можно считать завершенной. Настроим Firewall.
+```sh
+interface Ethernet0/0
+ no ip address
+
+interface Ethernet0/0.3010
+ encapsulation dot1Q 3010
+ ip address 10.123.1.10 255.255.255.254
+
+interface GigabitEthernet0/0.200
+ encapsulation dot1Q 200
+ ip address 169.254.0.8 255.255.255.254
+ 
+router bgp 4200100055
+ bgp log-neighbor-changes
+ neighbor 10.123.1.11 remote-as 4200100034
+ neighbor 10.123.1.13 remote-as 4200100035
+```
+
+На этом конфигурацию VxLAN/EVPN фабрики ЦОД можно считать завершенной.
+
 ##### 1.3. Проверка работоспособности VxLAN EVPN
-После настройки L2 и L3 связности с использованием технологий VxLAN EVPN проверим, что у нас VxLAN туннель работает, а EVPN маршруты передаются. В качестве примера, проверим работоспособность маршрутизации VxLAN EVPN со стороны коммутатора **_Leaf-2_**
+После настройки L2 и L3 связности с использованием технологий VxLAN EVPN проверим, что у нас VxLAN туннель работает, EVPN маршруты передаются, разные Tenant'ы могут общаться друг с другом. Так как в данном ДЗ упор идет на маршрутизацию между Tenant'ами, проверим работоспособность со стороны коммутатора **_Border_Leaf-1_**
 
 1. Проверка состояния NVE интерфейса (VxLAN туннеля).
  ```sh
