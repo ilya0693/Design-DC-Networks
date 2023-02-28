@@ -22,9 +22,9 @@
 
 <details>
 
-<summary> Базовая конфигурация VPCs </summary>
+<summary> Конфигурация серверов </summary>
 
-Конфигурация VPCS **_"Server-1"_**
+Конфигурация **_"Server-1"_**
 ```sh
 set pcname Server-1
 ip 10.123.100.10 255.255.255.0 10.123.100.1
