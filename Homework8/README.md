@@ -714,7 +714,7 @@ router bgp 4200100033
       address-family ipv4 unicast
    vrf B
     address-family ipv4 unicast
-      aggregate-address 10.123.252.0/22 summary-only
+      aggregate-address 10.123.253.0/23 summary-only
     neighbor 10.123.1.12
       remote-as 4200100055
       local-as 4200100035 no-prepend replace-as
@@ -741,24 +741,24 @@ router bgp 4200100055
 
 На этом конфигурацию VxLAN/EVPN фабрики ЦОД можно считать завершенной.
 
-##### 1.3. Проверка работоспособности VxLAN EVPN
+##### 1.4. Проверка работоспособности VxLAN EVPN
 После настройки L2 и L3 связности с использованием технологий VxLAN EVPN проверим, что у нас VxLAN туннель работает, EVPN маршруты передаются, разные Tenant'ы могут общаться друг с другом. Так как в данном ДЗ упор идет на маршрутизацию между Tenant'ами, проверим работоспособность со стороны коммутатора **_Border_Leaf-1_**
 
 1. Проверка состояния NVE интерфейса (VxLAN туннеля).
  ```sh
-Leaf-2# show nve peers
-Interface Peer-IP                                 State LearnType Uptime   Router-Mac
---------- --------------------------------------  ----- --------- -------- -----
-------------
-nve1      10.123.0.12                             Up    CP        00:49:05 5001.0000.1b08
-nve1      10.123.0.32                             Up    CP        00:05:56 5003.0000.1b08
+Border_Leaf-1# sh nve peers
+Interface Peer-IP                                 State LearnType Uptime   Route
+r-Mac
+--------- --------------------------------------  ----- --------- -------- -----------------
+nve1      10.123.0.12                             Up    CP        00:14:54 5001.0000.1b08
+nve1      10.123.0.22                             Up    CP        00:14:54 5002.0000.1b08
 
 ```
 Как мы видим, интерфейс NVE в состоянии UP.
 
 2. Более подробная информация об nve интерфейсе.
  ```sh
-Leaf-2# show nve vni
+Border_Leaf-1# show nve vni
 Codes: CP - Control Plane        DP - Data Plane
        UC - Unconfigured         SA - Suppress ARP
        SU - Suppress Unknown Unicast
@@ -767,44 +767,34 @@ Codes: CP - Control Plane        DP - Data Plane
 
 Interface VNI      Multicast-group   State Mode Type [BD/VRF]      Flags
 --------- -------- ----------------- ----- ---- ------------------ -----
-nve1      80100    UnicastBGP        Up    CP   L2 [100]
-nve1      80900    n/a               Up    CP   L3 [L3VNI]
+nve1      80900    n/a               Up    CP   L3 [A]
+nve1      80910    n/a               Up    CP   L3 [B]
 
 ```
-Из вывода команды видим, что информацию об удаленных мак адресах (по L2 связности) Leaf-2 получает через Control Plane (через BGP) с использованием ingress репликации. Также из вывода команды видно, что nve интерфейс в состоянии UP и информацию о VNI.
+Из вывода команды видим, что на BR используется только L3 VNI и каждый VNI находится в своем VRF.
 
-3. Просмотр статуса VxLAN интерфейса
+3. Проверка общей (суммарной) информации об установлении BGP соседства в адресном семействе L2VPN EVPN.
  ```sh
-Leaf-2# show vxlan interface
-Interface       Vlan    VPL Ifindex     LTL             HW VP
-=========       ====    ===========     ===             =====
-Eth1/7          100     0x530647fa      0x1801          2050
-
-No port-channels configured (0x0)
-```
-
-4. Проверка общей (суммарной) информации об установлении BGP соседства в адресном семействе L2VPN EVPN.
- ```sh
-Leaf-2# show bgp l2vpn evpn summary
+Border_Leaf-1# show bgp l2vpn evpn summary
 BGP summary information for VRF default, address family L2VPN EVPN
-BGP router identifier 10.123.0.21, local AS number 4200100022
-BGP table version is 27, L2VPN EVPN config peers 1, capable peers 1
-14 network entries and 14 paths using 2696 bytes of memory
-BGP attribute entries [13/2236], BGP AS path entries [2/20]
+BGP router identifier 10.123.0.31, local AS number 4200100033
+BGP table version is 67, L2VPN EVPN config peers 1, capable peers 1
+13 network entries and 13 paths using 2692 bytes of memory
+BGP attribute entries [13/2236], BGP AS path entries [5/58]
 BGP community entries [0/0], BGP clusterlist entries [0/0]
 
 Neighbor        V    AS MsgRcvd MsgSent   TblVer  InQ OutQ Up/Down  State/PfxRcd
 10.123.0.41     4 4200100000
-                             81      61       27    0    0 00:54:01 5
+                            195     165       67    0    0 00:16:46 4
 ```
 
 Как мы видим, BGP соседство установлено и они обмениваются EVPN маршрутами.
 
-5. Просмотр таблицы BGP адресного семейства L2VPN EVPN.
+4. Просмотр таблицы BGP адресного семейства L2VPN EVPN.
  ```sh
-Leaf-2# show bgp l2vpn evpn
+Border_Leaf-1# show bgp l2vpn evpn
 BGP routing table information for VRF default, address family L2VPN EVPN
-BGP table version is 27, Local Router ID is 10.123.0.21
+BGP table version is 67, Local Router ID is 10.123.0.31
 Status: s-suppressed, x-deleted, S-stale, d-dampened, h-history, *-valid, >-best
 Path type: i-internal, e-external, c-confed, l-local, a-aggregate, r-redist, I-i
 njected
@@ -812,61 +802,61 @@ Origin codes: i - IGP, e - EGP, ? - incomplete, | - multipath, & - backup, 2 - b
 est2
 
    Network            Next Hop            Metric     LocPrf     Weight Path
+Route Distinguisher: 10.123.0.11:33067
+*>e[2]:[0]:[0]:[48]:[aabb.cc00.6000]:[32]:[10.123.253.10]/272
+                      10.123.0.12                                    0 420010000
+0 4200100011 i
+
 Route Distinguisher: 10.123.0.12:100
-*>e[2]:[0]:[0]:[48]:[0050.7966.6806]:[0]:[0.0.0.0]/216
-                      10.123.0.12                                    0 420010000
-0 4200100011 i
-*>e[2]:[0]:[0]:[48]:[0050.7966.6806]:[32]:[10.123.100.10]/272
-                      10.123.0.12                                    0 420010000
-0 4200100011 i
-*>e[3]:[0]:[32]:[10.123.0.12]/88
+*>e[2]:[0]:[0]:[48]:[aabb.cc00.5000]:[32]:[10.123.100.10]/272
                       10.123.0.12                                    0 420010000
 0 4200100011 i
 
-Route Distinguisher: 10.123.0.22:100    (L2VNI 80100)
-*>e[2]:[0]:[0]:[48]:[0050.7966.6806]:[0]:[0.0.0.0]/216
-                      10.123.0.12                                    0 420010000
-0 4200100011 i
-*>l[2]:[0]:[0]:[48]:[0050.7966.6807]:[0]:[0.0.0.0]/216
-                      10.123.0.22                       100      32768 i
-*>e[2]:[0]:[0]:[48]:[0050.7966.6806]:[32]:[10.123.100.10]/272
-                      10.123.0.12                                    0 420010000
-0 4200100011 i
-*>l[2]:[0]:[0]:[48]:[0050.7966.6807]:[32]:[10.123.100.11]/272
-                      10.123.0.22                       100      32768 i
-*>e[3]:[0]:[32]:[10.123.0.12]/88
-                      10.123.0.12                                    0 420010000
-0 4200100011 i
-*>l[3]:[0]:[32]:[10.123.0.22]/88
-                      10.123.0.22                       100      32768 i
+Route Distinguisher: 10.123.0.21:33167
+*>e[2]:[0]:[0]:[48]:[aabb.cc00.8000]:[32]:[10.123.254.10]/272
+                      10.123.0.22                                    0 420010000
+0 4200100022 i
 
-Route Distinguisher: 10.123.0.31:33067
-*>e[2]:[0]:[0]:[48]:[0050.7966.6809]:[32]:[10.123.250.10]/272
-                      10.123.0.32                                    0 420010000
-0 4200100033 i
+Route Distinguisher: 10.123.0.22:100
+*>e[2]:[0]:[0]:[48]:[aabb.cc00.7000]:[32]:[10.123.100.11]/272
+                      10.123.0.22                                    0 420010000
+0 4200100022 i
 
-Route Distinguisher: 10.123.0.32:300
-*>e[2]:[0]:[0]:[48]:[0050.7966.6808]:[32]:[10.123.200.10]/272
-                      10.123.0.32                                    0 420010000
-0 4200100033 i
-
-Route Distinguisher: 10.123.0.22:900    (L3VNI 80900)
-*>e[2]:[0]:[0]:[48]:[0050.7966.6806]:[32]:[10.123.100.10]/272
+Route Distinguisher: 10.123.0.32:900    (L3VNI 80900)
+*>e[2]:[0]:[0]:[48]:[aabb.cc00.5000]:[32]:[10.123.100.10]/272
                       10.123.0.12                                    0 420010000
 0 4200100011 i
-*>e[2]:[0]:[0]:[48]:[0050.7966.6808]:[32]:[10.123.200.10]/272
-                      10.123.0.32                                    0 420010000
-0 4200100033 i
-*>e[2]:[0]:[0]:[48]:[0050.7966.6809]:[32]:[10.123.250.10]/272
-                      10.123.0.32                                    0 420010000
-0 4200100033 i
+*>e[2]:[0]:[0]:[48]:[aabb.cc00.7000]:[32]:[10.123.100.11]/272
+                      10.123.0.22                                    0 420010000
+0 4200100022 i
+*>l[5]:[0]:[0]:[23]:[10.123.252.0]/224
+                      10.123.0.32                                    0 420010005
+5 4200100035 i
+*>l[5]:[0]:[0]:[24]:[10.123.100.0]/224
+                      10.123.0.32                       100      32768 i
+*>l[5]:[0]:[0]:[32]:[10.123.254.10]/224
+                      10.123.0.32                                    0 420010005
+5 4200100035 4200100000 4200100022 i
+
+Route Distinguisher: 10.123.0.32:910    (L3VNI 80910)
+*>e[2]:[0]:[0]:[48]:[aabb.cc00.6000]:[32]:[10.123.253.10]/272
+                      10.123.0.12                                    0 420010000
+0 4200100011 i
+*>e[2]:[0]:[0]:[48]:[aabb.cc00.8000]:[32]:[10.123.254.10]/272
+                      10.123.0.22                                    0 420010000
+0 4200100022 i
+*>l[5]:[0]:[0]:[23]:[10.123.252.0]/224
+                      10.123.0.32                       100      32768 i
+*>l[5]:[0]:[0]:[24]:[10.123.100.0]/224
+                      10.123.0.32                                    0 420010005
+5 4200100034 i
 
 ```
-Из вывода команды видно, чте в таблице BGP есть EVPN маршруты до удаленных серверов (маршруты 2 типа) и маршруты до удаленных VTEP (маршруты 3 типа). Следует обратить внимание, что маршруты 2 типа имеют информацию как о MAC, так и о MAC/IP адресах.
+Из вывода команды видно, чте в таблице BGP есть EVPN маршруты до удаленных серверов (маршруты 2 типа), маршруты до удаленных VTEP (маршруты 3 типа) и маршруты до сетей, находящихся в других Tenant (маршруты 5 типа). 
 
-6. Просмотр L2 маршрутов EVPN.
+5. Просмотр L2 маршрутов EVPN.
  ```sh
-Leaf-2# show l2route evpn mac all
+Border_Leaf-1# show l2route evpn mac all
 
 Flags -(Rmac):Router MAC (Stt):Static (L):Local (R):Remote (V):vPC link
 (Dup):Duplicate (Spl):Split (Rcv):Recv (AD):Auto-Delete (D):Del Pending
@@ -877,42 +867,40 @@ Topology    Mac Address    Prod   Flags         Seq No     Next-Hops
 
 ----------- -------------- ------ ------------- ---------- ---------------------
 ------------------
-100         0050.7966.6806 BGP    SplRcv        0          10.123.0.12 (Label: 80100)
-100         0050.7966.6807 Local  L,            0          Eth1/7
 900         5001.0000.1b08 VXLAN  Rmac          0          10.123.0.12
-900         5003.0000.1b08 VXLAN  Rmac          0          10.123.0.32
+
+900         5002.0000.1b08 VXLAN  Rmac          0          10.123.0.22
+
+910         5001.0000.1b08 VXLAN  Rmac          0          10.123.0.12
+
+910         5002.0000.1b08 VXLAN  Rmac          0          10.123.0.22
+
+
 ```
-Из вывода команды видно, что мак адрес Server-2 выучен локально, остальные получены от удаленных VTEP.
+Из вывода команды видно, что мак адреса получены от удаленных VTEP.
 
 ### 2. Проверка доступности сетевых узлов.
-После настройки VxLAN EVPN проверим, что сервера "видят" друг друга. Для проверки доступности сетевых узлов будем использовать протокол ICMP, а именно команду ping, запускаемую на серверах ЦОД. Ниже представлен пример доступности всех серверов. Проверка проводилась с сервера 2 (Server-2).
+После настройки VxLAN EVPN проверим, что сервера "видят" друг друга. Для проверки доступности сетевых узлов будем использовать протокол ICMP, а именно команду ping, запускаемую на серверах ЦОД. Ниже представлен пример доступности всех серверов. Проверка проводилась с сервера 3 (Server-3).
 
 ```sh
-Server-2> ping 10.123.100.10
+Server-3#ping 10.123.100.10
+Type escape sequence to abort.
+Sending 5, 100-byte ICMP Echos to 10.123.100.10, timeout is 2 seconds:
+!!!!!
+Success rate is 100 percent (5/5), round-trip min/avg/max = 30/64/168 ms
 
-84 bytes from 10.123.100.10 icmp_seq=1 ttl=64 time=13.867 ms
-84 bytes from 10.123.100.10 icmp_seq=2 ttl=64 time=10.876 ms
-84 bytes from 10.123.100.10 icmp_seq=3 ttl=64 time=17.157 ms
-84 bytes from 10.123.100.10 icmp_seq=4 ttl=64 time=14.256 ms
-84 bytes from 10.123.100.10 icmp_seq=5 ttl=64 time=12.975 ms
+Server-3#ping 10.123.100.11
+Type escape sequence to abort.
+Sending 5, 100-byte ICMP Echos to 10.123.100.11, timeout is 2 seconds:
+!!!!!
+Success rate is 100 percent (5/5), round-trip min/avg/max = 32/51/96 ms
 
-Server-2> ping 10.123.200.10
+Server-3#ping 10.123.254.10
+Type escape sequence to abort.
+Sending 5, 100-byte ICMP Echos to 10.123.254.10, timeout is 2 seconds:
+!!!!!
+Success rate is 100 percent (5/5), round-trip min/avg/max = 13/31/95 ms
 
-84 bytes from 10.123.200.10 icmp_seq=1 ttl=62 time=34.525 ms
-84 bytes from 10.123.200.10 icmp_seq=2 ttl=62 time=19.539 ms
-84 bytes from 10.123.200.10 icmp_seq=3 ttl=62 time=27.538 ms
-84 bytes from 10.123.200.10 icmp_seq=4 ttl=62 time=14.931 ms
-84 bytes from 10.123.200.10 icmp_seq=5 ttl=62 time=15.359 ms
-
-Server-2> ping 10.123.250.10
-
-84 bytes from 10.123.250.10 icmp_seq=1 ttl=62 time=19.669 ms
-84 bytes from 10.123.250.10 icmp_seq=2 ttl=62 time=13.577 ms
-84 bytes from 10.123.250.10 icmp_seq=3 ttl=62 time=16.248 ms
-84 bytes from 10.123.250.10 icmp_seq=4 ttl=62 time=14.435 ms
-84 bytes from 10.123.250.10 icmp_seq=5 ttl=62 time=17.514 ms
 ```
 
-С остальных серверов результаты положительные, у каждого сервера есть L2 и L3 связность.
-
-С полной версией конфигурации каждого сетевого оборудования можно ознакомиться [здесь](https://github.com/ilya0693/Design-DC-Networks/tree/main/Homework6/Configs).
+С полной версией конфигурации каждого сетевого оборудования можно ознакомиться [здесь](https://github.com/ilya0693/Design-DC-Networks/tree/main/Homework8/Configs).
