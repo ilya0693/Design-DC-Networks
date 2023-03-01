@@ -714,7 +714,7 @@ router bgp 4200100033
       address-family ipv4 unicast
    vrf B
     address-family ipv4 unicast
-      aggregate-address 10.123.253.0/23 summary-only
+      aggregate-address 10.123.252.0/22 summary-only
     neighbor 10.123.1.12
       remote-as 4200100055
       local-as 4200100035 no-prepend replace-as
