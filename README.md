@@ -12,4 +12,4 @@
 8. [Homework8. VxLAN. Оптимизация таблиц маршрутизации](https://github.com/ilya0693/Design-DC-Networks/tree/main/Homework8)
 
 ## Проектная работа
-8. [Project work. Проектирование сетевой фабрики на основне VxLAN EVPN](https://github.com/ilya0693/Design-DC-Networks/tree/main/project%20work)
+[Project work. Проектирование сетевой фабрики на основне VxLAN EVPN](https://github.com/ilya0693/Design-DC-Networks/tree/main/project%20work)
