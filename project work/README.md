@@ -150,23 +150,40 @@ set policy-options policy-statement POL-PFE-ECMP then load-balance per-packet
 
  ```sh
 /* добавляем физические интерфейсы в LAG группы */
-set interfaces xe-0/0/0 description d77-spine-r01-sw01
+set interfaces xe-0/0/0 description d77-leaf-r11-sw01
+set interfaces xe-0/0/0 ether-options 802.3ad ae1
+set interfaces xe-0/0/1 description d77-spine-r11-sw01
 set interfaces xe-0/0/1 ether-options 802.3ad ae1
-set interfaces xe-0/0/2 description d77-spine-r01-sw01
-set interfaces xe-0/0/3 ether-options 802.3ad ae1
+set interfaces xe-0/0/2 description d77-leaf-r12-sw02
+set interfaces xe-0/0/2 ether-options 802.3ad ae2
+set interfaces xe-0/0/3 description d77-spine-r12-sw02
+set interfaces xe-0/0/3 ether-options 802.3ad ae2
 .....
 !
 /* конфигурация агрегированных LAG интерфейсов в сторону SPINE */
-set interfaces ae1 description d77-spine-r01-sw01
+set interfaces ae1 description d77-leaf-r11-sw01
 set interfaces ae1 mtu 9216
 set interfaces ae1 aggregated-ether-options lacp active
 set interfaces ae1 aggregated-ether-options lacp periodic fast
-set interfaces ae1 unit 0 family inet address 10.77.1.1/31
-set interfaces ae2 description d77-spine-r01-sw02
+set interfaces ae1 unit 0 family inet address 10.77.1.0/31
+set interfaces ae2 description d77-leaf-r12-sw02
 set interfaces ae2 mtu 9216
 set interfaces ae2 aggregated-ether-options lacp active
 set interfaces ae2 aggregated-ether-options lacp periodic fast
-set interfaces ae2 unit 0 family inet address 10.77.1.129/31
+set interfaces ae2 unit 0 family inet address 10.77.1.2/31
+.....
+!
+/* конфигурация интерфейсов в сторону BR */ 
+set interfaces xe-0/0/8 description d77-leaf-r11-sw01
+set interfaces ae1 mtu 9216
+set interfaces ae1 aggregated-ether-options lacp active
+set interfaces ae1 aggregated-ether-options lacp periodic fast
+set interfaces ae1 unit 0 family inet address 10.77.1.0/31
+set interfaces ae2 description d77-leaf-r12-sw02
+set interfaces ae2 mtu 9216
+set interfaces ae2 aggregated-ether-options lacp active
+set interfaces ae2 aggregated-ether-options lacp periodic fast
+set interfaces ae2 unit 0 family inet address 10.77.1.2/31
 !
 set protocols bgp log-updown
 set protocols bgp group UNDERLAY-IPFABRIC type external
