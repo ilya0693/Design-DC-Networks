@@ -48,7 +48,7 @@ _Задачи проекта:_
 
 В силу требований по расположению VXLAN L3 GW функционала на BR, BR маршрутизаторы участвуют сразу в блоке фабрики коммутации и блоке граничных маршрутизаторов.
 
-На рисунке ниже представлена физическая топология ЦОДа в г. Москва. Предполагается, что в г. Ставрополь физическая топология ЦОДа будет проектироваться идентично, но, в рамках данного проекта физическая топология упрощена из-за ограничений виртуального стенда.
+На рисунке ниже представлена физическая топология ЦОДа в г. Москва. Предполагается, что в г. Ставрополь физическая топология ЦОДа будет проектироваться идентично, но, в рамках данного проекта физическая топология упрощена, так как предполагается, что данный ЦОД будет масштабироваться постепенно.
 
 ![alt-текст](https://github.com/ilya0693/Design-DC-Networks/blob/main/project%20work/%D0%A4%D0%B8%D0%B7%D0%B8%D1%87%D0%B5%D1%81%D0%BA%D0%B0%D1%8F%20%D1%81%D1%85%D0%B5%D0%BC%D0%B0.drawio.png "Физическая схема сети ЦОД")
 
@@ -86,7 +86,120 @@ BR подключаются портами к вышестоящему пров�
 ![alt-текст](https://github.com/ilya0693/Design-DC-Networks/blob/main/project%20work/Underlay%20%D0%A1%D1%82%D0%B0%D0%B2%D1%80%D0%BE%D0%BF%D0%BE%D0%BB%D1%8C.png "Underlay топология ЦОД г. Ставрополь")
 
 Шаблон конфигурации для Underlay топологии представлен ниже
+<details>
+<summary> Шаблон конфигурации d77-leaf-r11-sw01 </summary>
 
+ ```sh
+/* добавляем физические интерфейсы в LAG группы */
+set interfaces xe-0/0/8 description d77-spine-r01-sw01
+set interfaces xe-0/0/8 ether-options 802.3ad ae1
+set interfaces xe-0/0/9 description d77-spine-r01-sw01
+set interfaces xe-0/0/9 ether-options 802.3ad ae1
+set interfaces xe-0/0/10 description d77-spine-r01-sw02
+set interfaces xe-0/0/10 ether-options 802.3ad ae2
+set interfaces xe-0/0/11 description d77-spine-r01-sw02
+set interfaces xe-0/0/11 ether-options 802.3ad ae2
+!
+/* конфигурация агрегированных LAG интерфейсов в сторону SPINE */
+set interfaces ae1 description d77-spine-r01-sw01
+set interfaces ae1 mtu 9216
+set interfaces ae1 aggregated-ether-options lacp active
+set interfaces ae1 aggregated-ether-options lacp periodic fast
+set interfaces ae1 unit 0 family inet address 10.77.1.1/31
+set interfaces ae2 description d77-spine-r01-sw02
+set interfaces ae2 mtu 9216
+set interfaces ae2 aggregated-ether-options lacp active
+set interfaces ae2 aggregated-ether-options lacp periodic fast
+set interfaces ae2 unit 0 family inet address 10.77.1.129/31
+!
+set protocols bgp log-updown
+set protocols bgp group UNDERLAY-IPFABRIC type external
+set protocols bgp group UNDERLAY-IPFABRIC mtu-discovery
+set protocols bgp group UNDERLAY-IPFABRIC import POL-BGP-IPFABRIC-IMPORT /* политики маршрутизации BGP UNDERLAY */
+set protocols bgp group UNDERLAY-IPFABRIC export POL-BGP-IPFABRIC-EXPORT /* политики маршрутизации BGP UNDERLAY */
+set protocols bgp group UNDERLAY-IPFABRIC local-as 4207700011
+set protocols bgp group UNDERLAY-IPFABRIC multipath multiple-as /* Балансировка BGP multipath */
+set protocols bgp group UNDERLAY-IPFABRIC bfd-liveness-detection minimum-interval 1000
+set protocols bgp group UNDERLAY-IPFABRIC bfd-liveness-detection multiplier 3
+set protocols bgp group UNDERLAY-IPFABRIC bfd-liveness-detection session-mode automatic
+set protocols bgp group UNDERLAY-IPFABRIC neighbor 10.77.1.0 description d77-spine-r01-sw01_ebgp
+set protocols bgp group UNDERLAY-IPFABRIC neighbor 10.77.1.0 peer-as 4207700001
+set protocols bgp group UNDERLAY-IPFABRIC neighbor 10.77.1.128 description d77-spine-r01-sw02_ebgp
+set protocols bgp group UNDERLAY-IPFABRIC neighbor 10.77.1.128 peer-as 4207700002
+!
+set routing-options router-id 10.77.0.12
+set routing-options forwarding-table export POL-PFE-ECMP /* Применение политики инсталляции префиксов в FIB для балансировки трафика */
+set routing-options forwarding-table ecmp-fast-reroute
+!
+set policy-options policy-statement POL-BGP-IPFABRIC-EXPORT term T-LPBK from protocol direct
+set policy-options policy-statement POL-BGP-IPFABRIC-EXPORT term T-LPBK from route-filter 10.77.0.12/32 exact
+set policy-options policy-statement POL-BGP-IPFABRIC-EXPORT term T-LPBK then accept
+!
+set policy-options policy-statement POL-BGP-IPFABRIC-IMPORT term T-LPBKS from route-filter 10.77.0.0/24 orlonger
+set policy-options policy-statement POL-BGP-IPFABRIC-IMPORT term T-LPBKS then accept
+set policy-options policy-statement POL-BGP-IPFABRIC-IMPORT term T-REJECT then then reject
+!
+set policy-options policy-statement POL-PFE-ECMP then load-balance per-packet
+
+Остальные Leaf коммутаторы настраиваются идентичным образом.
+```
+</details>
+
+<details>
+<summary> Шаблон конфигурации d77-spine-r01-sw01 </summary>
+
+ ```sh
+/* добавляем физические интерфейсы в LAG группы */
+set interfaces xe-0/0/0 description d77-spine-r01-sw01
+set interfaces xe-0/0/1 ether-options 802.3ad ae1
+set interfaces xe-0/0/2 description d77-spine-r01-sw01
+set interfaces xe-0/0/3 ether-options 802.3ad ae1
+.....
+!
+/* конфигурация агрегированных LAG интерфейсов в сторону SPINE */
+set interfaces ae1 description d77-spine-r01-sw01
+set interfaces ae1 mtu 9216
+set interfaces ae1 aggregated-ether-options lacp active
+set interfaces ae1 aggregated-ether-options lacp periodic fast
+set interfaces ae1 unit 0 family inet address 10.77.1.1/31
+set interfaces ae2 description d77-spine-r01-sw02
+set interfaces ae2 mtu 9216
+set interfaces ae2 aggregated-ether-options lacp active
+set interfaces ae2 aggregated-ether-options lacp periodic fast
+set interfaces ae2 unit 0 family inet address 10.77.1.129/31
+!
+set protocols bgp log-updown
+set protocols bgp group UNDERLAY-IPFABRIC type external
+set protocols bgp group UNDERLAY-IPFABRIC mtu-discovery
+set protocols bgp group UNDERLAY-IPFABRIC import POL-BGP-IPFABRIC-IMPORT /* политики маршрутизации BGP UNDERLAY */
+set protocols bgp group UNDERLAY-IPFABRIC export POL-BGP-IPFABRIC-EXPORT /* политики маршрутизации BGP UNDERLAY */
+set protocols bgp group UNDERLAY-IPFABRIC local-as 4207700011
+set protocols bgp group UNDERLAY-IPFABRIC multipath multiple-as /* Балансировка BGP multipath */
+set protocols bgp group UNDERLAY-IPFABRIC bfd-liveness-detection minimum-interval 1000
+set protocols bgp group UNDERLAY-IPFABRIC bfd-liveness-detection multiplier 3
+set protocols bgp group UNDERLAY-IPFABRIC bfd-liveness-detection session-mode automatic
+set protocols bgp group UNDERLAY-IPFABRIC neighbor 10.77.1.0 description d77-spine-r01-sw01_ebgp
+set protocols bgp group UNDERLAY-IPFABRIC neighbor 10.77.1.0 peer-as 4207700001
+set protocols bgp group UNDERLAY-IPFABRIC neighbor 10.77.1.128 description d77-spine-r01-sw02_ebgp
+set protocols bgp group UNDERLAY-IPFABRIC neighbor 10.77.1.128 peer-as 4207700002
+!
+set routing-options router-id 10.77.0.12
+set routing-options forwarding-table export POL-PFE-ECMP /* Применение политики инсталляции префиксов в FIB для балансировки трафика */
+set routing-options forwarding-table ecmp-fast-reroute
+!
+set policy-options policy-statement POL-BGP-IPFABRIC-EXPORT term T-LPBK from protocol direct
+set policy-options policy-statement POL-BGP-IPFABRIC-EXPORT term T-LPBK from route-filter 10.77.0.12/32 exact
+set policy-options policy-statement POL-BGP-IPFABRIC-EXPORT term T-LPBK then accept
+!
+set policy-options policy-statement POL-BGP-IPFABRIC-IMPORT term T-LPBKS from route-filter 10.77.0.0/24 orlonger
+set policy-options policy-statement POL-BGP-IPFABRIC-IMPORT term T-LPBKS then accept
+set policy-options policy-statement POL-BGP-IPFABRIC-IMPORT term T-REJECT then then reject
+!
+set policy-options policy-statement POL-PFE-ECMP then load-balance per-packet
+
+Остальные Leaf коммутаторы настраиваются идентичным образом.
+```
+</details>
 
 ### _2.2. Описание Overlay сети и шаблон конфигурации_
 
@@ -290,8 +403,8 @@ RT ES, используемая для Type 1 маршрутов, должна �
 |d26-leaf-r12-sw02   |10.26.253.22/25        |10.26.0.12/32          |4202600012   |10.26.1.2/31                  |10.26.1.130/31                |
 |d26-leaf-r13-sw03   |10.26.253.23/25        |10.26.0.13/32          |4202600013   |10.26.1.4/31                  |10.26.1.132/31                |
 |d26-leaf-r14-sw04   |10.26.253.24/25        |10.26.0.14/32          |4202600014   |10.26.1.6/31                  |10.26.1.134/31                |
-|d26-br-r02-br01     |10.26.253.4/25         |195.228.111.1/32       |4202600004   |10.26.1.120/31                |10.26.1.248/31                |
-|d26-br-r02-br02     |10.26.253.7/25         |195.228.111.2/32       |4202600005   |10.26.1.122/31                |10.26.1.250/31                |
+|d26-br-r02-br01     |10.26.253.4/25         |10.26.0.4/32           |4202600004   |10.26.1.120/31                |10.26.1.248/31                |
+|d26-br-r02-br02     |10.26.253.7/25         |10.26.0.5/32           |4202600005   |10.26.1.122/31                |10.26.1.250/31                |
 
 #### _6.4. Таблица значений VNI, используемых на площадках d77 и d26_
 Значения VNI в обоих ЦОД должны быть уникальными. Ниже представлены рекомендуемые значения VNI для каждой из площадок, а также значения для «растянутых» VLAN:
