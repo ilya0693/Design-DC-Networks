@@ -112,6 +112,8 @@ set interfaces ae2 aggregated-ether-options lacp active
 set interfaces ae2 aggregated-ether-options lacp periodic fast
 set interfaces ae2 unit 0 family inet address 10.77.1.129/31
 !
+set interfaces lo0 unit 0 family inet address 10.77.0.11/32
+!
 set protocols bgp log-updown
 set protocols bgp group UNDERLAY-IPFABRIC type external
 set protocols bgp group UNDERLAY-IPFABRIC mtu-discovery
@@ -127,12 +129,12 @@ set protocols bgp group UNDERLAY-IPFABRIC neighbor 10.77.1.0 peer-as 4207700001
 set protocols bgp group UNDERLAY-IPFABRIC neighbor 10.77.1.128 description d77-spine-r01-sw02_ebgp
 set protocols bgp group UNDERLAY-IPFABRIC neighbor 10.77.1.128 peer-as 4207700002
 !
-set routing-options router-id 10.77.0.12
+set routing-options router-id 10.77.0.11
 set routing-options forwarding-table export POL-PFE-ECMP /* Применение политики инсталляции префиксов в FIB для балансировки трафика */
 set routing-options forwarding-table ecmp-fast-reroute
 !
 set policy-options policy-statement POL-BGP-IPFABRIC-EXPORT term T-LPBK from protocol direct
-set policy-options policy-statement POL-BGP-IPFABRIC-EXPORT term T-LPBK from route-filter 10.77.0.12/32 exact
+set policy-options policy-statement POL-BGP-IPFABRIC-EXPORT term T-LPBK from route-filter 10.77.0.11/32 exact
 set policy-options policy-statement POL-BGP-IPFABRIC-EXPORT term T-LPBK then accept
 !
 set policy-options policy-statement POL-BGP-IPFABRIC-IMPORT term T-LPBKS from route-filter 10.77.0.0/24 orlonger
@@ -174,38 +176,41 @@ set interfaces ae2 unit 0 family inet address 10.77.1.2/31
 .....
 !
 /* конфигурация интерфейсов в сторону BR */ 
-set interfaces xe-0/0/8 description d77-leaf-r11-sw01
-set interfaces ae1 mtu 9216
-set interfaces ae1 aggregated-ether-options lacp active
-set interfaces ae1 aggregated-ether-options lacp periodic fast
-set interfaces ae1 unit 0 family inet address 10.77.1.0/31
-set interfaces ae2 description d77-leaf-r12-sw02
-set interfaces ae2 mtu 9216
-set interfaces ae2 aggregated-ether-options lacp active
-set interfaces ae2 aggregated-ether-options lacp periodic fast
-set interfaces ae2 unit 0 family inet address 10.77.1.2/31
+set interfaces xe-0/0/8 description d77-br-r02-br01
+set interfaces xe-0/0/8 mtu 9216
+set interfaces xe-0/0/8 unit 0 family inet address 10.77.1.121/31
+set interfaces xe-0/0/9 description d77-br-r02-br02
+set interfaces xe-0/0/9 mtu 9216
+set interfaces xe-0/0/9 unit 0 family inet address 10.77.1.123/31
+!
+set interfaces lo0 unit 0 family inet address 10.77.0.1/32
 !
 set protocols bgp log-updown
 set protocols bgp group UNDERLAY-IPFABRIC type external
 set protocols bgp group UNDERLAY-IPFABRIC mtu-discovery
 set protocols bgp group UNDERLAY-IPFABRIC import POL-BGP-IPFABRIC-IMPORT /* политики маршрутизации BGP UNDERLAY */
 set protocols bgp group UNDERLAY-IPFABRIC export POL-BGP-IPFABRIC-EXPORT /* политики маршрутизации BGP UNDERLAY */
-set protocols bgp group UNDERLAY-IPFABRIC local-as 4207700011
+set protocols bgp group UNDERLAY-IPFABRIC local-as 4207700001
 set protocols bgp group UNDERLAY-IPFABRIC multipath multiple-as /* Балансировка BGP multipath */
 set protocols bgp group UNDERLAY-IPFABRIC bfd-liveness-detection minimum-interval 1000
 set protocols bgp group UNDERLAY-IPFABRIC bfd-liveness-detection multiplier 3
 set protocols bgp group UNDERLAY-IPFABRIC bfd-liveness-detection session-mode automatic
-set protocols bgp group UNDERLAY-IPFABRIC neighbor 10.77.1.0 description d77-spine-r01-sw01_ebgp
-set protocols bgp group UNDERLAY-IPFABRIC neighbor 10.77.1.0 peer-as 4207700001
-set protocols bgp group UNDERLAY-IPFABRIC neighbor 10.77.1.128 description d77-spine-r01-sw02_ebgp
-set protocols bgp group UNDERLAY-IPFABRIC neighbor 10.77.1.128 peer-as 4207700002
+set protocols bgp group UNDERLAY-IPFABRIC neighbor 10.77.1.1 description d77-leaf-r11-sw01_ebgp
+set protocols bgp group UNDERLAY-IPFABRIC neighbor 10.77.1.1 peer-as 4207700011
+set protocols bgp group UNDERLAY-IPFABRIC neighbor 10.77.1.129 description d77-leaf-r12-sw02_ebgp
+set protocols bgp group UNDERLAY-IPFABRIC neighbor 10.77.1.129 peer-as 4207700012
+.....
+set protocols bgp group UNDERLAY-IPFABRIC neighbor 10.77.1.120 description d77-br-r02-br01_ebgp
+set protocols bgp group UNDERLAY-IPFABRIC neighbor 10.77.1.120 peer-as 4207700004
+set protocols bgp group UNDERLAY-IPFABRIC neighbor 10.77.1.122 description d77-br-r02-br02_ebgp
+set protocols bgp group UNDERLAY-IPFABRIC neighbor 10.77.1.122 peer-as 4207700005
 !
-set routing-options router-id 10.77.0.12
+set routing-options router-id 10.77.0.1
 set routing-options forwarding-table export POL-PFE-ECMP /* Применение политики инсталляции префиксов в FIB для балансировки трафика */
 set routing-options forwarding-table ecmp-fast-reroute
 !
 set policy-options policy-statement POL-BGP-IPFABRIC-EXPORT term T-LPBK from protocol direct
-set policy-options policy-statement POL-BGP-IPFABRIC-EXPORT term T-LPBK from route-filter 10.77.0.12/32 exact
+set policy-options policy-statement POL-BGP-IPFABRIC-EXPORT term T-LPBK from route-filter 10.77.0.1/32 exact
 set policy-options policy-statement POL-BGP-IPFABRIC-EXPORT term T-LPBK then accept
 !
 set policy-options policy-statement POL-BGP-IPFABRIC-IMPORT term T-LPBKS from route-filter 10.77.0.0/24 orlonger
@@ -214,7 +219,55 @@ set policy-options policy-statement POL-BGP-IPFABRIC-IMPORT term T-REJECT then t
 !
 set policy-options policy-statement POL-PFE-ECMP then load-balance per-packet
 
-Остальные Leaf коммутаторы настраиваются идентичным образом.
+Коммутатор d77-spine-r01-sw02 настраивается идентичным образом.
+```
+</details>
+
+<details>
+<summary> Шаблон конфигурации d77-br-r02-br01 </summary>
+
+ ```sh
+/* конфигурация интерфейсов в сторону SPINE */
+set interfaces xe-0/0/0 description d77-spine-r01-sw01
+set interfaces xe-0/0/0 mtu 9216
+set interfaces xe-0/0/0 unit 0 family inet address 10.77.1.120/31
+set interfaces xe-0/0/1 description d77-spine-r01-sw02
+set interfaces xe-0/0/1 mtu 9216
+set interfaces xe-0/0/1 unit 0 family inet address 10.77.1.248/31
+.....
+!
+set interfaces lo0 unit 0 family inet address 10.77.0.4/32
+!
+set protocols bgp log-updown
+set protocols bgp group UNDERLAY-IPFABRIC type external
+set protocols bgp group UNDERLAY-IPFABRIC mtu-discovery
+set protocols bgp group UNDERLAY-IPFABRIC import POL-BGP-IPFABRIC-IMPORT /* политики маршрутизации BGP UNDERLAY */
+set protocols bgp group UNDERLAY-IPFABRIC export POL-BGP-IPFABRIC-EXPORT /* политики маршрутизации BGP UNDERLAY */
+set protocols bgp group UNDERLAY-IPFABRIC local-as 4207700004
+set protocols bgp group UNDERLAY-IPFABRIC multipath multiple-as /* Балансировка BGP multipath */
+set protocols bgp group UNDERLAY-IPFABRIC bfd-liveness-detection minimum-interval 1000
+set protocols bgp group UNDERLAY-IPFABRIC bfd-liveness-detection multiplier 3
+set protocols bgp group UNDERLAY-IPFABRIC bfd-liveness-detection session-mode automatic
+set protocols bgp group UNDERLAY-IPFABRIC neighbor 10.77.1.121 description d77-spine-r01-sw01_ebgp
+set protocols bgp group UNDERLAY-IPFABRIC neighbor 10.77.1.121 peer-as 4207700001
+set protocols bgp group UNDERLAY-IPFABRIC neighbor 10.77.1.249 description d77-spine-r01-sw02_ebgp
+set protocols bgp group UNDERLAY-IPFABRIC neighbor 10.77.1.249 peer-as 4207700002
+!
+set routing-options router-id 10.77.0.1
+set routing-options forwarding-table export POL-PFE-ECMP /* Применение политики инсталляции префиксов в FIB для балансировки трафика */
+set routing-options forwarding-table ecmp-fast-reroute
+!
+set policy-options policy-statement POL-BGP-IPFABRIC-EXPORT term T-LPBK from protocol direct
+set policy-options policy-statement POL-BGP-IPFABRIC-EXPORT term T-LPBK from route-filter 10.77.0.1/32 exact
+set policy-options policy-statement POL-BGP-IPFABRIC-EXPORT term T-LPBK then accept
+!
+set policy-options policy-statement POL-BGP-IPFABRIC-IMPORT term T-LPBKS from route-filter 10.77.0.0/24 orlonger
+set policy-options policy-statement POL-BGP-IPFABRIC-IMPORT term T-LPBKS then accept
+set policy-options policy-statement POL-BGP-IPFABRIC-IMPORT term T-REJECT then then reject
+!
+set policy-options policy-statement POL-PFE-ECMP then load-balance per-packet
+
+Маршрутизатор d77-br-r02-br02 настраивается идентичным образом.
 ```
 </details>
 
