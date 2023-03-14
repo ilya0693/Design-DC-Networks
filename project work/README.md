@@ -432,10 +432,10 @@ set switch-options route-distinguisher 10.77.0.4:1 /* Уникальный RD н
 !
 set vlans v100 description PROD
 set vlans v100 vlan-id 100
-set vlans v100 vxlan vni 77100
+set vlans v100 vxlan vni 770100
 set vlans v200 description DEV
 set vlans v200 vlan-id 200
-set vlans v200 vxlan vni 77200
+set vlans v200 vxlan vni 770200
 
 Остальные Leaf коммутаторы настраиваются идентичным образом.
 ```
@@ -464,15 +464,39 @@ set routing-instances RI-VS-d77VSWITCH vrf-target auto /* Включение а�
 set routing-instances RI-VS-d77VSWITCH vrf-target target:65000:9999 /* Добавление единого RT ES на экспорт EVPN Type 1 маршрутов. */
 set routing-instances RI-VS-d77VSWITCH protocols evpn encapsulation vxlan
 set routing-instances RI-VS-d77VSWITCH protocols evpn extended-vni-list all /* Все vni/vlan относим к единтвенному EVPN instance */
+set routing-instances RI-VS-d77VSWITCH protocols evpn default-gateway no-gateway-community /* Так как используются VGA или Anycast IP, то gateway-community не нужно */
 !
 /* Конфигурация BD для каждого VNI */
 set routing-instances RI-VS-d77VSWITCH bridge-domains v100 description PROD
 set routing-instances RI-VS-d77VSWITCH bridge-domains v100 vlan-id 100
-set routing-instances RI-VS-d77VSWITCH bridge-domains v100 vxlan vni 77100
+set routing-instances RI-VS-d77VSWITCH bridge-domains v100 routing-interface irb.100 /* Связываем VLAN/VXLAN c L3 интерфейсом IRB, L3GW */
+set routing-instances RI-VS-d77VSWITCH bridge-domains v100 vxlan vni 770100
 set routing-instances RI-VS-d77VSWITCH bridge-domains v200 description DEV
 set routing-instances RI-VS-d77VSWITCH bridge-domains v200 vlan-id 200
-set routing-instances RI-VS-d77VSWITCH bridge-domains v200 vxlan vni 77200
-
+set routing-instances RI-VS-d77VSWITCH bridge-domains v200 routing-interface irb.200 /* Связываем VLAN/VXLAN c L3 интерфейсом IRB, L3GW */
+set routing-instances RI-VS-d77VSWITCH bridge-domains v200 vxlan vni 770200
+!
+/* Конфигурация L3VPN */
+set routing-instances RI-VRF-10 instance-type vrf
+set routing-instances RI-VRF-10 interface irb.100
+set routing-instances RI-VRF-10 interface irb.200
+set routing-instances RI-VRF-10 route-distinguisher 10.77.0.4:10
+set routing-instances RI-VRF-10 vrf-target 65277:10
+set routing-instances RI-VRF-10 vrf-table-label
+!
+/* L3 конфигурация IRB, L3GW */
+set interfaces irb mtu 9216
+set interfaces irb unit 100 apply-groups GR-IRB-INTF
+set interfaces irb unit 100 virtual-gateway-accept-data
+set interfaces irb unit 100 family inet address 10.77.100.2 virtual-gateway-address 10.77.100.1 /* Уникальный адрес BR + Виртуальный VGA адрес BR, шлюз */
+set interfaces irb unit 200 apply-groups GR-IRB-INTF
+set interfaces irb unit 200 virtual-gateway-accept-data
+set interfaces irb unit 200 family inet address 10.77.200.2 virtual-gateway-address 10.77.200.1
+!
+set groups GR-IRB-INTF interfaces <irb*> unit <*> family inet mtu 9152
+set groups GR-IRB-INTF interfaces <irb*> unit <*> virtual-gateway-v4-mac 00:00:5e:00:aa:bb
+set groups GR-IRB-INTF interfaces <irb*> unit <*> mac 00:00:5e:00:aa:bb
+ 
 Маршрутизатор d77-br-r02-br02 настраивается идентичным образом.
 ```
 </details>
@@ -481,6 +505,23 @@ set routing-instances RI-VS-d77VSWITCH bridge-domains v200 vxlan vni 77200
 На BR выполняется подключение сервисов ЦОД к сети вышестоящего оператора. Физически каждый BR подключается одним портом к PE-маршрутизаторам, BR1 к одному PE, BR2 к другому. Сервисы могут подключаться как на уровне L2, так и на уровне L3. Основным вариантом является L3-подключение.
 
 Для подключения клиентского EVPN/VXLAN на уровне L2 к L2VPN/VPLS-сервису на сети ISP используется следующая конфигурация:
+<details>
+<summary> Шаблон конфигурации d77-br-r02-br01 </summary>
+
+ ```sh
+set routing-instances RI-VS-d77VSWITCH interface xe-0/0/3.1011 /* Добавление логического интерфейса L2 стыка с PE в EVI Tenant */
+!
+/* Конфигурация VLAN/VXLAN стыкуемого сервиса */
+set routing-instances RI-VS-d77VSWITCH bridge-domains v1011 description CLIENT
+set routing-instances RI-VS-d77VSWITCH bridge-domains v1011 vlan-id 1011
+set routing-instances RI-VS-d77VSWITCH bridge-domains v1011 vxlan vni 771011
+!
+/* Конфигурация стыковочного интерфейса */
+set interfaces xe-0/0/3 unit 1011 family bridge interface-mode trunk
+set interfaces xe-0/0/3 unit 1011 family bridge vlan-id-list 1011
+ 
+```
+</details>
 
 Т.е. на BR конфигурируется связка клиентского VLAN/VXLAN из ЦОД с логическим интерфейсом стыка c PE, предназначенным для L2-сервисов. Этот логический интефрейс
 настраивается как trunk с соответствующим списком VLAN. Как видно из конфигурации, один логический интефрейс стыка используется для множества сервисов.
