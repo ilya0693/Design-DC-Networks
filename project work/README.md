@@ -428,7 +428,7 @@ set protocols evpn extended-vni-list all /* Все vni/vlan относим к е
 set switch-options vtep-source-interface lo0.0 /* Явно указывается источник VXLAN туннелей */
 set switch-options vrf-target auto /* Включение автоматической генерации RT для VNI */
 set switch-options vrf-target target:65000:9999 /* Добавление единого RT ES на экспорт EVPN Type 1 маршрутов. Данный RT ES одинаковый во всех ЦОД в целях корректной работы DCI для ESI-LAG */
-set switch-options route-distinguisher 10.77.0.4:1 /* Уникальный RD на каждом EVPN/VXLAN PE */
+set switch-options route-distinguisher 10.77.0.11:1 /* Уникальный RD на каждом EVPN/VXLAN PE */
 !
 set vlans v100 description PROD
 set vlans v100 vlan-id 100
@@ -629,7 +629,7 @@ set interfaces xe-0/0/3 unit 2000 vlan-id 2000
 set interfaces xe-0/0/3 unit 2000 family inet address 201.199.195.2/30
 !
 /* Политика анонса префиксов Lo0 интерфейсов локального ЦОД */
-set policy-options policy-statement POL-DCI-EXPORT term 10 from from protocol bgp
+set policy-options policy-statement POL-DCI-EXPORT term 10 from protocol bgp
 set policy-options policy-statement POL-DCI-EXPORT term 10 then accept
 set policy-options policy-statement POL-DCI-EXPORT term 20 from protocol direct
 set policy-options policy-statement POL-DCI-EXPORT term 20 from interface lo0.0
@@ -648,6 +648,67 @@ VNI-идентификаторы VXLAN должны быть одинаковы�
 
 RT ES, используемая для Type 1 маршрутов, должна быть одинакова во всех ЦОД для корректной работы ESI-LAG. Если она будет разная, то один ЦОД не будет видеть ESI-LAG
 другого ЦОД, а соответственно, и сервера, за ними расположенные. Технически можно применять разные RT ES в разных ЦОД и явным образом конфигурировать политики импорта/экспорта EVPN, чтобы добиться корректного обмена маршрутов, но вариант с одинаковой RT ES проще в эксплуатации.
+ 
+<details>
+<summary> Шаблон конфигурации d77-spine-r01-sw01 </summary>
+
+ ```sh
+/* BGP группа для DCI Overlay */
+set protocols bgp group OVERLAY-DCI-EVPN type external
+set protocols bgp group OVERLAY-DCI-EVPN multihop ttl 200
+set protocols bgp group OVERLAY-DCI-EVPN multihop no-nexthop-change /* Multi-hop eBGP сессия без изменения аттрибута next-hop передаваемых маршрутов, по умолчанию
+eBGP сессии являются single-hop и автоматически выполняют next-hop-self */
+set protocols bgp group OVERLAY-DCI-EVPN local-address 10.77.0.1
+set protocols bgp group OVERLAY-DCI-EVPN family evpn signaling
+set protocols bgp group OVERLAY-DCI-EVPN export POL-OVERLAY-DCI-EVPN-EXPORT /* Политика фильтрации EVPN маршрутов DCI */
+set protocols bgp group OVERLAY-DCI-EVPN multipath
+set protocols bgp group OVERLAY-DCI-EVPN bfd-liveness-detection minimum-interval 250
+set protocols bgp group OVERLAY-DCI-EVPN bfd-liveness-detection multiplier 3
+set protocols bgp group OVERLAY-DCI-EVPN bfd-liveness-detection session-mode automatic
+/* Сессии со всеми RR других ЦОД, RR full-mesh */
+set protocols bgp group OVERLAY-DCI-EVPN neighbor 10.26.0.1 description d26-spine-r01-sw01
+set protocols bgp group OVERLAY-DCI-EVPN neighbor 10.26.0.1 peer-as 65226
+set protocols bgp group OVERLAY-DCI-EVPN neighbor 10.26.0.2 description d26-spine-r01-sw02
+set protocols bgp group OVERLAY-DCI-EVPN neighbor 10.26.0.2 peer-as 65226
+!
+/* Политика фильтрации EVPN маршрутов DCI */
+/* Разрешается только передача Type2 и Type3 маршрутов EVPN c community из выделенного диапазона */
+set policy-options policy-statement POL-OVERLAY-DCI-EVPN-EXPORT term 10 from family evpn
+set policy-options policy-statement POL-OVERLAY-DCI-EVPN-EXPORT term 10 from community CT-DCI-RAGNE
+set policy-options policy-statement POL-OVERLAY-DCI-EVPN-EXPORT term 10 from nlri-route-type 2
+set policy-options policy-statement POL-OVERLAY-DCI-EVPN-EXPORT term 10 from nlri-route-type 3
+set policy-options policy-statement POL-OVERLAY-DCI-EVPN-EXPORT term 10 then accept
+/* Разрешается передача всех Type1 и Type4 маршрутов */
+set policy-options policy-statement POL-OVERLAY-DCI-EVPN-EXPORT term 20 from family evpn
+set policy-options policy-statement POL-OVERLAY-DCI-EVPN-EXPORT term 20 from nlri-route-type 1
+set policy-options policy-statement POL-OVERLAY-DCI-EVPN-EXPORT term 20 from nlri-route-type 4
+set policy-options policy-statement POL-OVERLAY-DCI-EVPN-EXPORT term 20 then accept
+set policy-options policy-statement POL-OVERLAY-DCI-EVPN-EXPORT term 1000 then reject
+!
+set policy-options community CT-DCI-RAGNE members "target:65000:1[0-9][0-9][0-9]";
+ 
+```
+</details>
+ 
+<details>
+<summary> Шаблон конфигурации d77-leaf-r11-sw01 </summary>
+
+ ```sh
+set switch-options vtep-source-interface lo0.0
+set switch-options vrf-target auto /* Автоматическое назначение vrf-target для нерастянутых VXLAN */
+set switch-options vrf-target target:65000:9999 /* RT ES одинаковая во всех ЦОД в целях корректной работы DCI для ESI-LAG */
+set switch-options route-distinguisher 10.77.0.11:1
+!
+set protocols evpn vni-options vni 653550 vrf-target target:65000:99 /* Статическое назначение vrf-target для растянутых VXLAN */
+set protocols evpn encapsulation vxlan
+set protocols evpn encapsulation vxlan
+!
+set vlans v3550 description DC1-DC2
+set vlans v3550 vlan-id 3550
+set vlans v3550 vxlan vni 773550 /* VNI из зарезервированого для DCI диапазона, одинаков во всех ЦОД для данного VXLAN */
+ 
+```
+</details>
 
 ### _5. Кратко про взаимодействие с оборудованием безопасности_
 
