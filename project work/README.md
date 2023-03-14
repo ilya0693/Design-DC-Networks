@@ -298,6 +298,110 @@ Route Reflectors выполняют SPINE-коммутаторы как пока
 * По сравнению с добавлением нового ToR-коммутатора добавление нового ЦОД является крайне редким явлением.
 
 Шаблон конфигурации для Overlay топологии представлен ниже
+<details>
+<summary> Шаблон конфигурации d77-leaf-r11-sw01 </summary>
+
+ ```sh
+set protocols bgp group OVERLAY-EVPN type internal
+set protocols bgp group OVERLAY-EVPN local-address 10.77.0.11
+set protocols bgp group OVERLAY-EVPN import POL-BGP-REJECT-RGW-IMPORT
+set protocols bgp group OVERLAY-EVPN export POL-MARK-LEAF
+set protocols bgp group OVERLAY-EVPN family evpn signaling
+set protocols bgp group OVERLAY-EVPN vpn-apply-export
+set protocols bgp group OVERLAY-EVPN multipath
+set protocols bgp group OVERLAY-EVPN bfd-liveness-detection minimum-interval 1000
+set protocols bgp group OVERLAY-EVPN bfd-liveness-detection multiplier 3
+set protocols bgp group OVERLAY-EVPN bfd-liveness-detection session-mode automatic
+set protocols bgp group OVERLAY-EVPN neighbor 10.77.0.1 description d77-spine-r01-sw01_ibgp
+set protocols bgp group OVERLAY-EVPN neighbor 10.77.0.2 description d77-spine-r01-sw02_ibgp
+!
+set routing-options router-id 10.77.0.11
+set routing-options autonomous-system 65277
+!
+/* Запрет на импорт EVPN Type 1,2,3 маршрутов от удаленных MX PE */
+set policy-options policy-statement POL-BGP-REJECT-RGW-IMPORT term T-REJECT-REMOTE-GW from family evpn
+set policy-options policy-statement POL-BGP-REJECT-RGW-IMPORT term T-REJECT-REMOTE-GW from as-path ASP-LENGTH1MORE
+set policy-options policy-statement POL-BGP-REJECT-RGW-IMPORT term T-REJECT-REMOTE-GW from community CT-GW
+set policy-options policy-statement POL-BGP-REJECT-RGW-IMPORT term T-REJECT-REMOTE-GW from nlri-route-type [ 1 2 3 ]
+set policy-options policy-statement POL-BGP-REJECT-RGW-IMPOR term T-REJECT-REMOTE-GW then reject
+set policy-options policy-statement POL-BGP-REJECT-RGW-IMPOR term T-ACCEPT-ALL then accept
+!
+/* Маркируем анонсируемые EVPN маршруты community означающими принадлежность к определенному ЦОД и типу LEAF */
+set policy-options policy-statement POL-MARK-LEAF term 10 then community add CT-LEAF
+set policy-options policy-statement POL-MARK-LEAF term 10 then community add CT-65277
+!
+set policy-options community CT-65277 members target:65000:65277
+set policy-options community CT-LEAF members target:65000:2
+set policy-options community CT-GW members target:65000:1
+set policy-options as-path ASP-LENGTH1MORE ".{1,}"
+
+Остальные Leaf коммутаторы настраиваются идентичным образом.
+```
+</details>
+
+<details>
+<summary> Шаблон конфигурации d77-spine-r01-sw01 </summary>
+
+ ```sh
+set protocols bgp group OVERLAY-EVPN type internal
+set protocols bgp group OVERLAY-EVPN local-address 10.77.0.1
+set protocols bgp group OVERLAY-EVPN family evpn signaling
+set protocols bgp group OVERLAY-EVPN multipath
+set protocols bgp group OVERLAY-EVPN cluster 10.77.0.1
+set protocols bgp group OVERLAY-EVPN bfd-liveness-detection minimum-interval 1000
+set protocols bgp group OVERLAY-EVPN bfd-liveness-detection multiplier 3
+set protocols bgp group OVERLAY-EVPN bfd-liveness-detection session-mode automatic
+set protocols bgp group OVERLAY-EVPN neighbor 10.77.0.3 description d77-br-r02-br01_ibgp
+set protocols bgp group OVERLAY-EVPN neighbor 10.77.0.4 description d77-br-r02-br02_ibgp
+set protocols bgp group OVERLAY-EVPN neighbor 10.77.0.11 description d77-leaf-r11-sw01_ibgp
+set protocols bgp group OVERLAY-EVPN neighbor 10.77.0.12 description d77-leaf-r12-sw02_ibgp
+.....
+!
+/* Прямая BGP сессия между RR (SPINE) внутри ЦОД, они не являются клиентами друг друга */
+set protocols bgp group OVERLAY-EVPN-RR-RR type internal
+set protocols bgp group OVERLAY-EVPN-RR-RR local-address 10.77.0.1
+set protocols bgp group OVERLAY-EVPN-RR-RR family evpn signaling
+set protocols bgp group OVERLAY-EVPN-RR-RR bfd-liveness-detection minimum-interval 1000
+set protocols bgp group OVERLAY-EVPN-RR-RR bfd-liveness-detection multiplier 3
+set protocols bgp group OVERLAY-EVPN-RR-RR bfd-liveness-detection session-mode automatic
+set protocols bgp group OVERLAY-EVPN neighbor 10.77.0.2 description d77-spine-r01-sw02_rr
+!
+set routing-options router-id 10.77.0.1
+set routing-options autonomous-system 65277
+
+Коммутатор d77-spine-r01-sw02 настраивается идентичным образом.
+```
+</details>
+
+<details>
+<summary> Шаблон конфигурации d77-br-r02-br01 </summary>
+
+ ```sh
+set protocols bgp group OVERLAY-EVPN type internal
+set protocols bgp group OVERLAY-EVPN local-address 10.77.0.4
+set protocols bgp group OVERLAY-EVPN family evpn signaling
+set protocols bgp group OVERLAY-EVPN export POL-MARK-GW
+set protocols bgp group OVERLAY-EVPN vpn-apply-export
+set protocols bgp group OVERLAY-EVPN multipath
+set protocols bgp group OVERLAY-EVPN bfd-liveness-detection minimum-interval 1000
+set protocols bgp group OVERLAY-EVPN bfd-liveness-detection multiplier 3
+set protocols bgp group OVERLAY-EVPN bfd-liveness-detection session-mode automatic
+set protocols bgp group OVERLAY-EVPN neighbor 10.77.0.1 description d77-spine-r01-sw01_ibgp
+set protocols bgp group OVERLAY-EVPN neighbor 10.77.0.2 description d77-spine-r01-sw02_ibgp
+!
+/* Маркируем анонсируемые EVPN маршруты community означающими принадлежность к определенному ЦОД и типу GW */
+set policy-options policy-statement POL-MARK-GW term 10 then community add CT-GW
+set policy-options policy-statement POL-MARK-GW term 10 then community add CT-65277
+!
+set policy-options community CT-65277 members target:65000:65277
+set policy-options community CT-GW members target:65000:1
+!
+set routing-options router-id 10.77.0.4
+set routing-options autonomous-system 65277
+
+Маршрутизатор d77-br-r02-br02 настраивается идентичным образом.
+```
+</details>
 
 ### _2.3. VXLAN/EVPN фабрики в Junos (L2VNI и L3VNI) и шаблон конфигурации_
 
