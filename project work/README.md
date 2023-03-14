@@ -522,17 +522,80 @@ set interfaces xe-0/0/3 unit 1011 family bridge vlan-id-list 1011
  
 ```
 </details>
-
+ 
 Т.е. на BR конфигурируется связка клиентского VLAN/VXLAN из ЦОД с логическим интерфейсом стыка c PE, предназначенным для L2-сервисов. Этот логический интефрейс
 настраивается как trunk с соответствующим списком VLAN. Как видно из конфигурации, один логический интефрейс стыка используется для множества сервисов.
 
-Сервисы на уровне L3-маршрутизации рекомендуется стыковать с использованием протокола eBGP на PE-CE, где в роли CE выступает BR. На BR в клиентском VRF создается eBGP-сессия с вышестоящим PE, по которой анонсируются префиксы IRB-интерфейсов данного VRF и принимаются маршруты соответствующего сервиса из сети вышестоящего провайдера, что соответствует Inter-AS MPLS VPN Option-A-стыку L3VPN. На OPT-A стыке рекомендуется удалять все route target extended community с принимаемых и отправляемых по eBGP префиксов. 
+Сервисы на уровне L3-маршрутизации рекомендуется стыковать с использованием протокола eBGP на PE-CE, где в роли CE выступает BR. На BR в клиентском VRF создается eBGP-сессия с вышестоящим PE, по которой анонсируются префиксы IRB-интерфейсов данного VRF и принимаются маршруты соответствующего сервиса из сети вышестоящего провайдера, что соответствует Inter-AS MPLS VPN Option-A-стыку L3VPN. 
+
+Для подключения клиентского EVPN/VXLAN на уровне L3 используется следующий шаблон конфигурации:
+<details>
+<summary> Шаблон конфигурации d77-br-r02-br01 </summary>
+
+ ```sh
+set routing-instances RI-VRF-100 instance-type vrf
+set routing-instances RI-VRF-100 interface irb.500
+set routing-instances RI-VRF-100 interface xe-0/0/3.1050
+set routing-instances RI-VRF-100 route-distinguisher 10.77.0.4:100
+set routing-instances RI-VRF-100 vrf-target 65277:100
+set routing-instances RI-VRF-100 vrf-table-label
+!
+/* Конфигурация eBGP сессии OPT-A стыка PE-CE */
+set routing-instances RI-VRF-100 protocols bgp group GRP-PECE-ISP hold-time 10
+set routing-instances RI-VRF-100 protocols bgp group GRP-PECE-ISP export POL-VRF-100-EBGP-EXPORT
+set routing-instances RI-VRF-100 protocols bgp group GRP-PECE-ISP peer-as 12800
+set routing-instances RI-VRF-100 protocols bgp group GRP-PECE-ISP local-as 65277
+set routing-instances RI-VRF-100 protocols bgp group GRP-PECE-ISP bfd-liveness-detection minimum-interval 250
+set routing-instances RI-VRF-100 protocols bgp group GRP-PECE-ISP bfd-liveness-detection multiplier 3
+set routing-instances RI-VRF-100 protocols bgp group GRP-PECE-ISP bfd-liveness-detection session-mode automatic
+set routing-instances RI-VRF-100 protocols bgp group GRP-PECE-ISP neighbor 198.211.120.1
+!
+/* Конфигурация стыковочного интерфейса */
+set interfaces xe-0/0/3 unit 1050 vlan-id 1050
+set interfaces xe-0/0/3 unit 1050 family inet address 198.211.120.2/30
+!
+set policy-options policy-statement POL-VRF-100-EBGP-EXPORT term 1 from route-filter 200.0.0.0/24 orlonger
+set policy-options policy-statement POL-VRF-100-EBGP-EXPORT term 1 then accept
+set policy-options policy-statement POL-VRF-100-EBGP-EXPORT then reject
+ 
+```
+</details>
 
 Для резервирования L3 сервисов используется BGP VPNv4/6-сессии и MPLS между BR для передачи префиксов, полученных от PE. Дело в том, что серверам и LEAF-коммутаторам не доступна информация о наличии связности между BR (он же CE) и PE. Поэтому, в случае отказа стыка CE - PE, возникнет black hole и трафик, поступающий на CE с отказавшим стыком и назначенный к адресам доступным через PE, будет отбрасываться. На рисунке ниже представлен пример отказа стыка BR2 и PE2
 
 ![alt-текст](https://github.com/ilya0693/Design-DC-Networks/blob/main/project%20work/Reservation%20of%20channels.drawio.png "Пример отказа стыка BR2 и PE2")
 
-Для подключения клиентского EVPN/VXLAN на уровне L3 используется следующий шаблон конфигурации:
+Для резервирования L3 сервисов используется следующий шаблон конфигурации:
+<details>
+<summary> Шаблон конфигурации d77-br-r02-br01 </summary>
+
+ ```sh
+/* BGP группа для VPNv4 iBGP сессии */
+set protocols bgp group BR-MPLSVPN type internal
+set protocols bgp group BR-MPLSVPN family inet-vpn unicast
+set protocols bgp group BR-MPLSVPN neighbor 10.77.2.1 local-address 10.77.2.2
+!
+/* Через rib-group интерфейс стыка между BR помещается в inet.3 */
+set routing-options interface-routes rib-group inet RIBGRP-INTRF-TO-INET3
+set routing-options rib-groups RIBGRP-INTRF-TO-INET3 import-rib inet.0
+set routing-options rib-groups RIBGRP-INTRF-TO-INET3 import-rib inet.3
+set routing-options rib-groups RIBGRP-INTRF-TO-INET3 import-policy POL-RIBGRP-INTRF-TO-INET3
+!
+/* Конфигурация стыковочного интерфейса между BR */
+set interfaces xe-0/0/2 description d77-br-r02-br02
+set interfaces xe-0/0/2 unit 0 family inet address 10.77.2.2/30
+set interfaces xe-0/0/2 unit 0 family mpls /* Включение обработки MPLS инкапсуляции на интерфейсе стыка между BR */
+!
+set policy-options policy-statement POL-RIBGRP-INTRF-TO-INET3 term 10 from interface xe-0/0/2
+set policy-options policy-statement POL-RIBGRP-INTRF-TO-INET3 term 10 then accept
+set policy-options policy-statement POL-RIBGRP-INTRF-TO-INET3 term 20 from interface lo0.0
+set policy-options policy-statement POL-RIBGRP-INTRF-TO-INET3 term 20 then accept
+set policy-options policy-statement POL-RIBGRP-INTRF-TO-INET3 term 100 to rib inet.0
+set policy-options policy-statement POL-RIBGRP-INTRF-TO-INET3 term 100 then accept
+set policy-options policy-statement POL-RIBGRP-INTRF-TO-INET3 term 1000 then reject
+ 
+```
+</details>
 
 ### _4. DCI или растягивание VLAN между несколькими ЦОД_
 Для подключения серверов разных ЦОД в одну и ту же L2-среду и выполнения миграции виртуальных машин между ЦОД реализуется DC Interconnect. Реализацию DCI можно условно
