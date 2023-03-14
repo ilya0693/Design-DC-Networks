@@ -322,7 +322,9 @@ set routing-options autonomous-system 65277
 set policy-options policy-statement POL-BGP-REJECT-RGW-IMPORT term T-REJECT-REMOTE-GW from family evpn
 set policy-options policy-statement POL-BGP-REJECT-RGW-IMPORT term T-REJECT-REMOTE-GW from as-path ASP-LENGTH1MORE
 set policy-options policy-statement POL-BGP-REJECT-RGW-IMPORT term T-REJECT-REMOTE-GW from community CT-GW
-set policy-options policy-statement POL-BGP-REJECT-RGW-IMPORT term T-REJECT-REMOTE-GW from nlri-route-type [ 1 2 3 ]
+set policy-options policy-statement POL-BGP-REJECT-RGW-IMPORT term T-REJECT-REMOTE-GW from nlri-route-type 1
+set policy-options policy-statement POL-BGP-REJECT-RGW-IMPORT term T-REJECT-REMOTE-GW from nlri-route-type 2
+set policy-options policy-statement POL-BGP-REJECT-RGW-IMPORT term T-REJECT-REMOTE-GW from nlri-route-type 3
 set policy-options policy-statement POL-BGP-REJECT-RGW-IMPOR term T-REJECT-REMOTE-GW then reject
 set policy-options policy-statement POL-BGP-REJECT-RGW-IMPOR term T-ACCEPT-ALL then accept
 !
@@ -416,7 +418,52 @@ L2GW предполагает инкапсуляцию и декапсуляци
 BGP-маршрутами других address family на маршрутизаторах BR.
 
 Шаблон конфигурации для EVP/VXLAN (L2GW) представлен ниже
+<details>
+<summary> Шаблон конфигурации d77-leaf-r11-sw01 </summary>
 
+ ```sh
+set protocols evpn encapsulation vxlan
+set protocols evpn extended-vni-list all /* Все vni/vlan относим к единтвенному EVPN instance */
+!
+set switch-options vtep-source-interface lo0.0 /* Явно указывается источник VXLAN туннелей */
+set switch-options vrf-target auto /* Включение автоматической генерации RT для VNI */
+set switch-options vrf-target target:65000:9999 /* Добавление единого RT ES на экспорт EVPN Type 1 маршрутов. Данный RT ES одинаковый во всех ЦОД в целях корректной работы DCI для ESI-LAG */
+set switch-options route-distinguisher 10.77.0.4:1 /* Уникальный RD на каждом EVPN/VXLAN PE */
+!
+set vlans v100 description PROD
+set vlans v100 vlan-id 100
+set vlans v100 vxlan vni 77100
+set vlans v200 description DEV
+set vlans v200 vlan-id 200
+set vlans v200 vxlan vni 77200
+
+Остальные Leaf коммутаторы настраиваются идентичным образом.
+```
+</details>
+
+<details>
+<summary> Шаблон конфигурации d77-br-r02-br01 </summary>
+
+ ```sh
+set routing-instances RI-VS-d77VSWITCH instance-type virtual-switch
+set routing-instances RI-VS-d77VSWITCH vtep-source-interface lo0.0
+set routing-instances RI-VS-d77VSWITCH route-distinguisher 10.77.0.4:1
+set routing-instances RI-VS-d77VSWITCH vrf-target auto /* Включение автоматической генерации RT для VNI */
+set routing-instances RI-VS-d77VSWITCH vrf-target target:65000:9999 /* Добавление единого RT ES на экспорт EVPN Type 1 маршрутов. */
+set routing-instances RI-VS-d77VSWITCH protocols evpn encapsulation vxlan
+set routing-instances RI-VS-d77VSWITCH protocols evpn extended-vni-list all /* Все vni/vlan относим к единтвенному EVPN instance */
+!
+/* Конфигурация BD для каждого VNI */
+set routing-instances RI-VS-d77VSWITCH bridge-domains v100 description PROD
+set routing-instances RI-VS-d77VSWITCH bridge-domains v100 vlan-id 100
+set routing-instances RI-VS-d77VSWITCH bridge-domains v100 vxlan vni 77100
+set routing-instances RI-VS-d77VSWITCH bridge-domains v200 description DEV
+set routing-instances RI-VS-d77VSWITCH bridge-domains v200 vlan-id 200
+set routing-instances RI-VS-d77VSWITCH bridge-domains v200 vxlan vni 77200
+
+Маршрутизатор d77-br-r02-br02 настраивается идентичным образом.
+```
+</details>
 
 Рассмотрим описание и реализацию функционала L3GW.
 На L3GW выполняется маршрутизация трафика между разными VLAN/VXLAN. Модель, в которой маршрутизация выполняется централизованно на BR, называется CRB Centrally-
