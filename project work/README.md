@@ -607,6 +607,36 @@ set policy-options policy-statement POL-RIBGRP-INTRF-TO-INET3 term 1000 then rej
 #### _4.1. Обеспечение IP связности между Lo адресами оборудования разных ЦОД в Underlay_
 
 Для создания DCI первым шагом обеспечивается IP-связность между Lo0-адресами оборудования разных ЦОД в Underlay. Устанавливаются eBGP IPv4-сессии между GRT ЦОД BR и транспортным VRF для DCI, созданным в сети провайдера. Шаблон конфигурации ниже:
+<details>
+<summary> Шаблон конфигурации d77-br-r02-br01 </summary>
+
+ ```sh
+/* BGP группа для DCI Underlay */
+set protocols bgp group DCI type external
+set protocols bgp group DCI family inet unicast
+set protocols bgp group DCI export POL-DCI-EXPORT /* Политика анонса префиксов Lo0 интерфейсов локального ЦОД */
+set protocols bgp group DCI neighbor 201.199.195.1
+set protocols bgp group DCI peer-as 12800
+set protocols bgp group DCI local-as 65277
+set protocols bgp group DCI bfd-liveness-detection minimum-interval 250
+set protocols bgp group DCI bfd-liveness-detection multiplier 3
+set protocols bgp group DCI bfd-liveness-detection session-mode automatic
+!
+/* Конфигурация стыковочного интерфейса BR и PE для DCI Underlay */
+set interfaces xe-0/0/3 flexible-vlan-tagging
+set interfaces xe-0/0/3 encapsulation flexible-ethernet-services
+set interfaces xe-0/0/3 unit 2000 vlan-id 2000
+set interfaces xe-0/0/3 unit 2000 family inet address 201.199.195.2/30
+!
+/* Политика анонса префиксов Lo0 интерфейсов локального ЦОД */
+set policy-options policy-statement POL-DCI-EXPORT term 10 from from protocol bgp
+set policy-options policy-statement POL-DCI-EXPORT term 10 then accept
+set policy-options policy-statement POL-DCI-EXPORT term 20 from protocol direct
+set policy-options policy-statement POL-DCI-EXPORT term 20 from interface lo0.0
+set policy-options policy-statement POL-DCI-EXPORT term 20 then accept
+ 
+```
+</details>
 
 #### _4.2. Обеспечение связности между ЦОД в Overlay_
 Для обмена BGP EVPN-маршрутами создаются eBGP EVPN multihop-сессий между Route Reflectors (RR) разных ЦОД. Далее RR распространяют полученные префиксы внутри своих
