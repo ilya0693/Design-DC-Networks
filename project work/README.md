@@ -139,7 +139,7 @@ set policy-options policy-statement POL-BGP-IPFABRIC-EXPORT term T-LPBK then acc
 !
 set policy-options policy-statement POL-BGP-IPFABRIC-IMPORT term T-LPBKS from route-filter 10.77.0.0/24 orlonger
 set policy-options policy-statement POL-BGP-IPFABRIC-IMPORT term T-LPBKS then accept
-set policy-options policy-statement POL-BGP-IPFABRIC-IMPORT term T-REJECT then then reject
+set policy-options policy-statement POL-BGP-IPFABRIC-IMPORT term T-REJECT then reject
 !
 set policy-options policy-statement POL-PFE-ECMP then load-balance per-packet
 
@@ -215,7 +215,7 @@ set policy-options policy-statement POL-BGP-IPFABRIC-EXPORT term T-LPBK then acc
 !
 set policy-options policy-statement POL-BGP-IPFABRIC-IMPORT term T-LPBKS from route-filter 10.77.0.0/24 orlonger
 set policy-options policy-statement POL-BGP-IPFABRIC-IMPORT term T-LPBKS then accept
-set policy-options policy-statement POL-BGP-IPFABRIC-IMPORT term T-REJECT then then reject
+set policy-options policy-statement POL-BGP-IPFABRIC-IMPORT term T-REJECT then reject
 !
 set policy-options policy-statement POL-PFE-ECMP then load-balance per-packet
 
@@ -263,7 +263,7 @@ set policy-options policy-statement POL-BGP-IPFABRIC-EXPORT term T-LPBK then acc
 !
 set policy-options policy-statement POL-BGP-IPFABRIC-IMPORT term T-LPBKS from route-filter 10.77.0.0/24 orlonger
 set policy-options policy-statement POL-BGP-IPFABRIC-IMPORT term T-LPBKS then accept
-set policy-options policy-statement POL-BGP-IPFABRIC-IMPORT term T-REJECT then then reject
+set policy-options policy-statement POL-BGP-IPFABRIC-IMPORT term T-REJECT then reject
 !
 set policy-options policy-statement POL-PFE-ECMP then load-balance per-packet
 
