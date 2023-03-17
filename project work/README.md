@@ -685,7 +685,7 @@ set policy-options policy-statement POL-OVERLAY-DCI-EVPN-EXPORT term 20 from nlr
 set policy-options policy-statement POL-OVERLAY-DCI-EVPN-EXPORT term 20 then accept
 set policy-options policy-statement POL-OVERLAY-DCI-EVPN-EXPORT term 1000 then reject
 !
-set policy-options community CT-DCI-RAGNE members "target:65000:1[0-9][0-9][0-9]";
+set policy-options community CT-DCI-RAGNE members "target:65000:1[0-9][0-9][0-9]"
  
 ```
 </details>
