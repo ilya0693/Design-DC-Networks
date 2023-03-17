@@ -318,7 +318,7 @@ set protocols bgp group OVERLAY-EVPN neighbor 10.77.0.2 description d77-spine-r0
 set routing-options router-id 10.77.0.11
 set routing-options autonomous-system 65277
 !
-/* Запрет на импорт EVPN Type 1,2,3 маршрутов от удаленных MX PE */
+/* Запрет на импорт EVPN Type 1,2,3 маршрутов от удаленных BR */
 set policy-options policy-statement POL-BGP-REJECT-RGW-IMPORT term T-REJECT-REMOTE-GW from family evpn
 set policy-options policy-statement POL-BGP-REJECT-RGW-IMPORT term T-REJECT-REMOTE-GW from as-path ASP-LENGTH1MORE
 set policy-options policy-statement POL-BGP-REJECT-RGW-IMPORT term T-REJECT-REMOTE-GW from community CT-GW
